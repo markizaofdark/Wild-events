@@ -2,9 +2,9 @@
  * Wild Events — SillyTavern Extension
  * Replaces the in-prompt random events system with pure JS mechanics.
  * Zero AI tokens spent on dice rolls or tension math.
- * 
- * Injects a one-line event directive into the prompt that the model
- * must follow when generating its response.
+ *
+ * Tension increments only on genuinely new messages.
+ * Swipes/rerolls re-randomize the d20 but never change tension.
  */
 
 import { extension_settings, getContext } from '../../../extensions.js';
@@ -21,15 +21,11 @@ const EXT = 'wild-events';
 
 const DEFAULTS = {
     enabled: true,
-    step: 0.5,        // tension added per new message
+    step: 0.5,
     label: 'WILD EVENTS',
-    depth: 0,          // 0 = end of context (maximum model attention)
+    depth: 0,
 };
 
-/**
- * Event table — maps final score ranges to event types.
- * adj: how tension changes after this event fires.
- */
 const EVENTS = [
     { min: 1,  max: 10, id: 'NONE',   name: 'NO CHANGE',       adj: null,     desc: 'No forced external change. Story flows naturally.' },
     { min: 11, max: 14, id: 'SUBTLE', name: 'SUBTLE CHANGE',    adj: null,     desc: 'A minor obstacle or a small lucky break.' },
@@ -40,7 +36,12 @@ const EVENTS = [
 
 // ── State ──────────────────────────────────────────────────
 
-let lastChatLen = 0; // tracks chat length to distinguish new messages from swipes
+/**
+ * ID of the last message for which we already incremented tension.
+ * Resets on chat switch. Swipes/rerolls don't change message count,
+ * so tension never increments twice for the same message.
+ */
+let lastIncrementedMsgId = null;
 
 // ── Tension helpers ────────────────────────────────────────
 
@@ -62,10 +63,6 @@ function findEvent(score) {
     return EVENTS.find(e => score >= e.min && score <= e.max) || EVENTS[0];
 }
 
-/**
- * Formats the injection text that the model will see in its context.
- * Designed to be short, authoritative, and hard to ignore.
- */
 function formatPrompt(result) {
     const label = extension_settings[EXT].label || DEFAULTS.label;
     const impact = result.isPositive ? 'POSITIVE' : 'NEGATIVE';
@@ -88,11 +85,10 @@ function formatPrompt(result) {
 }
 
 /**
- * Main function: rolls dice, calculates event, injects into prompt.
- * Called on every generation (including swipes/regenerations).
- * Tension only increments on genuinely new messages.
+ * Rolls dice and injects event directive.
+ * @param {boolean} isNewMessage - true only for genuinely new messages, false for swipes/rerolls
  */
-function onGeneration() {
+function runEvent(isNewMessage) {
     const s = extension_settings[EXT];
 
     if (!s.enabled) {
@@ -100,53 +96,62 @@ function onGeneration() {
         return;
     }
 
-    const ctx = getContext();
-    const chatLen = ctx.chat?.length ?? 0;
-
-    // ── Step 1: Tension ──
     let tension = getTension();
 
-    // Only add tension on new messages, not swipes/regenerations
-    if (chatLen > lastChatLen) {
+    // ── Step 1: Tension — only on new messages ──
+    if (isNewMessage) {
         tension = Math.min(100, tension + s.step);
-        lastChatLen = chatLen;
+        saveTension(tension);
     }
 
     // ── Step 2: Roll ──
     let baseRoll, modifier, finalScore, isPositive, event;
     let forced = false;
 
+    baseRoll = Math.floor(Math.random() * 20) + 1;
+    modifier = Math.floor(tension / 8);
+    isPositive = baseRoll % 2 === 0;
+
     if (tension >= 100) {
-        // Forced GIANT at max tension
         forced = true;
-        baseRoll = Math.floor(Math.random() * 20) + 1;
-        isPositive = baseRoll % 2 === 0;
-        modifier = Math.floor(tension / 8);
         finalScore = 25; // guaranteed GIANT
-        event = EVENTS[4];
     } else {
-        baseRoll = Math.floor(Math.random() * 20) + 1;
-        modifier = Math.floor(tension / 8);
         finalScore = baseRoll + modifier;
-        isPositive = baseRoll % 2 === 0;
-        event = findEvent(finalScore);
     }
 
-    // ── Step 3: Adjust tension after event ──
-    if (event.adj === 'reset') tension = 0;
-    else if (event.adj === 'reduce') tension *= 0.75;
+    event = findEvent(finalScore);
 
-    saveTension(tension);
+    // ── Step 3: Adjust tension after event fires ──
+    // Only adjust when event actually fires (new message), not on rerolls of same message
+    if (isNewMessage) {
+        if (event.adj === 'reset') saveTension(0);
+        else if (event.adj === 'reduce') saveTension(tension * 0.75);
+    }
 
-    // ── Step 4: Inject into prompt ──
-    const result = { tension, baseRoll, modifier, finalScore, isPositive, event, forced };
+    // ── Step 4: Inject ──
+    const result = { tension: getTension(), baseRoll, modifier, finalScore, isPositive, event, forced };
     const prompt = formatPrompt(result);
-
-    // Position 1 = IN_CHAT, role 0 = SYSTEM
     setExtensionPrompt(EXT, prompt, 1, s.depth, false, 0);
 
     // ── Step 5: Update UI ──
     updateUI(result);
+}
+
+// ── Generation hooks ───────────────────────────────────────
+
+function onGenerationStarted() {
+    const ctx = getContext();
+    const chat = ctx.chat ?? [];
+    // The last message in chat at generation time is the one being generated/rerolled
+    // We use its index as a unique ID for this "slot"
+    const currentMsgId = chat.length;
+
+    const isNew = currentMsgId !== lastIncrementedMsgId;
+    if (isNew) {
+        lastIncrementedMsgId = currentMsgId;
+    }
+
+    runEvent(isNew);
 }
 
 // ── UI ─────────────────────────────────────────────────────
@@ -189,13 +194,11 @@ function buildUI() {
         </div>
         <div class="inline-drawer-content">
 
-            <!-- Toggle -->
             <label class="checkbox_label">
                 <input type="checkbox" id="we_toggle" />
                 <span>Enable</span>
             </label>
 
-            <!-- Tension bar -->
             <div class="we_section">
                 <div class="we_row">
                     <span>Tension</span>
@@ -206,7 +209,6 @@ function buildUI() {
                 </div>
             </div>
 
-            <!-- Last roll info -->
             <div class="we_section we_results">
                 <div class="we_row">
                     <span>Roll</span>
@@ -224,7 +226,6 @@ function buildUI() {
 
             <hr>
 
-            <!-- Settings -->
             <label><small>Injection label</small></label>
             <input type="text" id="we_label" class="text_pole" placeholder="WILD EVENTS" />
 
@@ -246,10 +247,8 @@ function buildUI() {
 // ── Init ───────────────────────────────────────────────────
 
 jQuery(async () => {
-    // Build UI
     buildUI();
 
-    // Load settings (merge with defaults)
     if (!extension_settings[EXT]) extension_settings[EXT] = {};
     for (const [k, v] of Object.entries(DEFAULTS)) {
         if (extension_settings[EXT][k] === undefined) {
@@ -258,21 +257,16 @@ jQuery(async () => {
     }
     const s = extension_settings[EXT];
 
-    // Populate UI from settings
     $('#we_toggle').prop('checked', s.enabled);
     $('#we_label').val(s.label);
     $('#we_step').val(s.step);
     $('#we_depth').val(s.depth);
     updateUI(null);
 
-    // ── Event handlers ──
-
     $('#we_toggle').on('change', function () {
         s.enabled = this.checked;
         saveSettingsDebounced();
-        if (!this.checked) {
-            setExtensionPrompt(EXT, '', 1, s.depth);
-        }
+        if (!this.checked) setExtensionPrompt(EXT, '', 1, s.depth);
     });
 
     $('#we_label').on('input', function () {
@@ -292,16 +286,15 @@ jQuery(async () => {
 
     $('#we_reset').on('click', () => {
         saveTension(0);
+        lastIncrementedMsgId = null;
         updateUI(null);
         toastr.info('Tension reset to 0%');
     });
 
-    // ── Hook into generation pipeline ──
-    eventSource.on(event_types.GENERATION_STARTED, onGeneration);
+    eventSource.on(event_types.GENERATION_STARTED, onGenerationStarted);
 
-    // ── Sync UI on chat switch ──
     eventSource.on(event_types.CHAT_CHANGED, () => {
-        lastChatLen = 0;
+        lastIncrementedMsgId = null;
         updateUI(null);
         $('#we_roll_val').text('—');
         $('#we_event_val').text('—').css('color', '');
