@@ -260,7 +260,7 @@ function formatPrompt(result) {
         return `[${label}: NO CHANGE]\nNo forced twist. Story continues naturally.`;
     }
 
-    const eventType = pickEventType(result.event.id, result.isPositive);
+    const eventType = result.eventType || pickEventType(result.event.id, result.isPositive);
 
     let lines = [
         `[${label}: ${result.event.name} | ${impact}]`,
@@ -308,7 +308,8 @@ function runEvent(isNewMessage) {
         else if (event.adj === 'reduce') saveTension(tension * 0.75);
     }
 
-    const result = { tension: getTension(), baseRoll, modifier, finalScore, isPositive, event, forced };
+    const eventType = pickEventType(event.id, isPositive);
+    const result = { tension: getTension(), baseRoll, modifier, finalScore, isPositive, event, forced, eventType };
     const prompt = formatPrompt(result);
     setExtensionPrompt(EXT, prompt, 1, s.depth, false, 0);
 
@@ -345,6 +346,13 @@ function updateUI(result) {
         ? 'var(--SmartThemeBodyColor)'
         : result.isPositive ? '#66bb6a' : '#ef5350');
 
+    if (result.eventType && result.event.id !== 'NONE') {
+        $('#we_type_val').text(result.eventType);
+        $('#we_type_row').show();
+    } else {
+        $('#we_type_row').hide();
+    }
+
     const impEl = $('#we_impact_val');
     if (result.event.id === 'NONE') {
         impEl.text('—').css('color', 'var(--SmartThemeBodyColor)');
@@ -373,6 +381,7 @@ function buildUI() {
             <div class="we_section we_results">
                 <div class="we_row"><span>Roll</span><span id="we_roll_val">—</span></div>
                 <div class="we_row"><span>Event</span><b id="we_event_val">—</b></div>
+                <div class="we_type_row" id="we_type_row" style="display:none;"><span id="we_type_val"></span></div>
                 <div class="we_row"><span>Impact</span><span id="we_impact_val">—</span></div>
             </div>
             <hr>
@@ -422,6 +431,7 @@ jQuery(async () => {
         $('#we_roll_val').text('—');
         $('#we_event_val').text('—').css('color', '');
         $('#we_impact_val').text('—').css('color', '');
+        $('#we_type_row').hide();
         toastr.info('Tension reset to 0%');
     });
 
@@ -432,5 +442,6 @@ jQuery(async () => {
         $('#we_roll_val').text('—');
         $('#we_event_val').text('—').css('color', '');
         $('#we_impact_val').text('—').css('color', '');
+        $('#we_type_row').hide();
     });
 });

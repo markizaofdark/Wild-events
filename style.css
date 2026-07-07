@@ -43,3 +43,12 @@
     border-radius: 4px;
     padding: 6px 8px;
 }
+
+/* Event type row */
+.we_type_row {
+    font-size: 0.8em;
+    opacity: 0.75;
+    padding: 3px 0 4px 0;
+    line-height: 1.35;
+    font-style: italic;
+}
