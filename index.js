@@ -1,10 +1,3 @@
-/**
- * Wild Events — SillyTavern Extension
- * Replaces the in-prompt random events system with pure JS mechanics.
- * Zero AI tokens spent on dice rolls or tension math.
- * Now includes specific event type injection per scale and polarity.
- */
-
 import { extension_settings, getContext } from '../../../extensions.js';
 import {
     saveSettingsDebounced,
@@ -318,15 +311,12 @@ function runEvent(isNewMessage) {
 
 // ── Generation hooks ───────────────────────────────────────
 
-function onGenerationStarted() {
-    const ctx = getContext();
-    const chat = ctx.chat ?? [];
-    const currentMsgId = chat.length;
+function onMessageSent() {
+    runEvent(true);
+}
 
-    const isNew = currentMsgId !== lastIncrementedMsgId;
-    if (isNew) lastIncrementedMsgId = currentMsgId;
-
-    runEvent(isNew);
+function onMessageSwiped() {
+    runEvent(false);
 }
 
 // ── UI ─────────────────────────────────────────────────────
@@ -435,7 +425,8 @@ jQuery(async () => {
         toastr.info('Tension reset to 0%');
     });
 
-    eventSource.on(event_types.GENERATION_STARTED, onGenerationStarted);
+    eventSource.on(event_types.MESSAGE_SENT, onMessageSent);
+    eventSource.on(event_types.MESSAGE_SWIPED, onMessageSwiped);
     eventSource.on(event_types.CHAT_CHANGED, () => {
         lastIncrementedMsgId = null;
         updateUI(null);
