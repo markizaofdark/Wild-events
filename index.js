@@ -221,10 +221,6 @@ function pickEventType(scaleId, isPositive) {
     return list[Math.floor(Math.random() * list.length)];
 }
 
-// ── State ──────────────────────────────────────────────────
-
-let lastIncrementedMsgId = null;
-
 // ── Tension helpers ────────────────────────────────────────
 
 function getTension() {
@@ -416,7 +412,6 @@ jQuery(async () => {
     $('#we_depth').on('input', function () { s.depth = parseInt(this.value) || DEFAULTS.depth; saveSettingsDebounced(); });
     $('#we_reset').on('click', () => {
         saveTension(0);
-        lastIncrementedMsgId = null;
         updateUI(null);
         $('#we_roll_val').text('—');
         $('#we_event_val').text('—').css('color', '');
@@ -428,7 +423,6 @@ jQuery(async () => {
     eventSource.on(event_types.MESSAGE_SENT, onMessageSent);
     eventSource.on(event_types.MESSAGE_SWIPED, onMessageSwiped);
     eventSource.on(event_types.CHAT_CHANGED, () => {
-        lastIncrementedMsgId = null;
         updateUI(null);
         $('#we_roll_val').text('—');
         $('#we_event_val').text('—').css('color', '');
