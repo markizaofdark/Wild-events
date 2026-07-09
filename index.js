@@ -372,7 +372,7 @@ function buildUI() {
             </div>
             <hr>
             <label><small>Injection label</small></label>
-            <input type="text" id="we_label" class="text_pole" placeholder="WILD EVENTS" />
+            <input type="text" id="we_label" class="text_pole" placeholder="RANDOM EVENTS & TYPE OF IMPACT" />
             <label><small>Tension per message</small></label>
             <input type="number" id="we_step" class="text_pole" min="0.1" max="10" step="0.1" />
             <label><small>Injection depth (0 = end of context)</small></label>
