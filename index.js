@@ -302,6 +302,10 @@ function runEvent(isNewMessage) {
     const prompt = formatPrompt(result);
     setExtensionPrompt(EXT, prompt, 1, s.depth, false, 0);
 
+    // Persist last result so UI can restore it after panel reopen
+    extension_settings[EXT]._lastResult = result;
+    saveSettingsDebounced();
+
     updateUI(result);
 }
 
@@ -372,7 +376,7 @@ function buildUI() {
             </div>
             <hr>
             <label><small>Injection label</small></label>
-            <input type="text" id="we_label" class="text_pole" placeholder="RANDOM EVENTS & TYPE OF IMPACT" />
+            <input type="text" id="we_label" class="text_pole" placeholder="WILD EVENTS" />
             <label><small>Tension per message</small></label>
             <input type="number" id="we_step" class="text_pole" min="0.1" max="10" step="0.1" />
             <label><small>Injection depth (0 = end of context)</small></label>
@@ -400,7 +404,8 @@ jQuery(async () => {
     $('#we_label').val(s.label);
     $('#we_step').val(s.step);
     $('#we_depth').val(s.depth);
-    updateUI(null);
+    // Restore last result if available (panel was reopened mid-session)
+    updateUI(s._lastResult || null);
 
     $('#we_toggle').on('change', function () {
         s.enabled = this.checked;
@@ -423,6 +428,7 @@ jQuery(async () => {
     eventSource.on(event_types.MESSAGE_SENT, onMessageSent);
     eventSource.on(event_types.MESSAGE_SWIPED, onMessageSwiped);
     eventSource.on(event_types.CHAT_CHANGED, () => {
+        extension_settings[EXT]._lastResult = null;
         updateUI(null);
         $('#we_roll_val').text('—');
         $('#we_event_val').text('—').css('color', '');
