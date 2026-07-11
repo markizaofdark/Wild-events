@@ -838,7 +838,7 @@ function getDefaultProfileName() {
 
 // ── API call ───────────────────────────────────────────────
 
-async function callAPI(messages, maxTokens = 2000) {
+async function callAPI(messages, maxTokens = 8000) {
     const s = extension_settings[EXT];
     const profiles = getConnectionProfiles();
 
@@ -983,7 +983,7 @@ async function generateCustomSetting(name, description) {
         { role: 'user', content: buildGenerationPrompt(description) },
     ];
 
-    const raw = await callAPI(messages, 3000);
+    const raw = await callAPI(messages, 8000);
     if (!raw) return null;
 
     const events = parseGeneratedEvents(raw);
