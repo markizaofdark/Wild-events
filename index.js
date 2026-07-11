@@ -788,61 +788,6 @@ const SETTING_EVENTS = {
 };
 
 
-// ── Chat badge ─────────────────────────────────────────────
-
-function injectBadge(result) {
-    const s = extension_settings[EXT];
-    if (!s.showBadge || !result || result.event.id === 'NONE') return;
-
-    // Find last bot message element
-    const $allMes = $('#chat .mes');
-    let $target = null;
-    for (let i = $allMes.length - 1; i >= 0; i--) {
-        const $m = $($allMes[i]);
-        if ($m.attr('is_user') !== 'true') { $target = $m; break; }
-    }
-    if (!$target || !$target.length) return;
-
-    $target.find('.we_chat_badge').remove();
-
-    const isPos = result.isPositive;
-    const shortName = result.event.name
-        .replace(' PLOT TWIST', '')
-        .replace(' CHANGE', '');
-    const arrow = isPos ? '▲' : '▼';
-    const shortLabel = `${arrow} ${shortName}`;
-    const settingLabel = getActiveSettingLabel();
-    const eventType = result.eventType || '';
-    const fullText = [settingLabel ? `[${settingLabel}]` : '', eventType]
-        .filter(Boolean).join(' · ');
-
-    const colorClass = isPos ? 'we_badge_pos' : 'we_badge_neg';
-
-    const $badge = $(`<div class="we_chat_badge ${colorClass}" data-open="true">` +
-        `<span class="we_badge_label">${shortLabel}</span>` +
-        (fullText ? `<span class="we_badge_sep"> · </span><span class="we_badge_full">${fullText}</span>` : '') +
-        `<span class="we_badge_toggle">▾</span>` +
-        `</div>`);
-
-    $badge.on('click', function() {
-        const isOpen = $(this).attr('data-open') === 'true';
-        $(this).attr('data-open', String(!isOpen));
-        $(this).find('.we_badge_full, .we_badge_sep').toggle(isOpen ? false : true);
-        $(this).find('.we_badge_toggle').text(isOpen ? '▸' : '▾');
-    });
-
-    const $mesBlock = $target.find('.mes_block');
-    if ($mesBlock.length) {
-        $badge.insertBefore($mesBlock);
-    } else {
-        $target.prepend($badge);
-    }
-}
-
-function removeBadges() {
-    $('.we_chat_badge').remove();
-}
-
 // ── Pool builder ───────────────────────────────────────────
 
 
