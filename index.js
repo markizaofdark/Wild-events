@@ -1029,9 +1029,9 @@ function injectBadge(result) {
     const colorClass = isPos ? 'we_badge_pos' : 'we_badge_neg';
 
     const $badge = $(`<div class="we_chat_badge ${colorClass}" data-open="false">` +
-        `<span class="we_badge_label">${shortLabel}</span>` +
+        `<span class="we_badge_label"><span class="we_badge_arrow">${arrow}</span> ${shortName}</span>` +
         (fullText ? `<span class="we_badge_sep"> · </span><span class="we_badge_full">${fullText}</span>` : '') +
-        `<span class="we_badge_toggle">▾</span>` +
+        `<span class="we_badge_toggle">▸</span>` +
         `</div>`);
 
     $badge.find('.we_badge_full, .we_badge_sep').hide();

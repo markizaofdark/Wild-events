@@ -212,40 +212,40 @@
     max-width: calc(100% - 24px);
     box-sizing: border-box;
     transition: opacity 0.15s;
-    border-left: 2px solid;
+    border-left: 2px solid var(--SmartThemeBorderColor, color-mix(in srgb, var(--SmartThemeBodyColor) 20%, transparent));
+    background-color: color-mix(in srgb, var(--SmartThemeBodyColor) 6%, transparent);
+    color: var(--SmartThemeBodyColor);
     overflow: hidden;
 }
 
 .we_chat_badge:hover {
-    opacity: 0.85;
+    background-color: color-mix(in srgb, var(--SmartThemeBodyColor) 10%, transparent);
 }
 
-.we_badge_pos {
-    background-color: color-mix(in srgb, var(--green-tint, #66bb6a) 12%, transparent);
-    border-left-color: color-mix(in srgb, var(--green-tint, #66bb6a) 55%, transparent);
-    color: color-mix(in srgb, var(--green-tint, #66bb6a) 85%, var(--SmartThemeBodyColor));
+.we_badge_pos .we_badge_arrow {
+    color: #66bb6a;
+    font-weight: 700;
 }
 
-.we_badge_neg {
-    background-color: color-mix(in srgb, var(--red-tint, #ef5350) 12%, transparent);
-    border-left-color: color-mix(in srgb, var(--red-tint, #ef5350) 55%, transparent);
-    color: color-mix(in srgb, var(--red-tint, #ef5350) 85%, var(--SmartThemeBodyColor));
+.we_badge_neg .we_badge_arrow {
+    color: #ef5350;
+    font-weight: 700;
 }
 
 .we_badge_label {
-    font-weight: 600;
     letter-spacing: 0.03em;
     white-space: nowrap;
     flex-shrink: 0;
+    opacity: 0.9;
 }
 
 .we_badge_sep {
-    opacity: 0.5;
+    opacity: 0.35;
     flex-shrink: 0;
 }
 
 .we_badge_full {
-    opacity: 0.85;
+    opacity: 0.75;
     white-space: normal;
     word-break: break-word;
     min-width: 0;
@@ -255,7 +255,7 @@
 
 .we_badge_toggle {
     margin-left: 5px;
-    opacity: 0.5;
+    opacity: 0.35;
     flex-shrink: 0;
     font-size: 0.9em;
 }
