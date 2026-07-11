@@ -1,14 +1,38 @@
-import { extension_settings, getContext, saveMetadataDebounced } from '../../../extensions.js';
+'use strict';
+
+import { extension_settings } from '../../../extensions.js';
 import {
     saveSettingsDebounced,
     eventSource,
     event_types,
     setExtensionPrompt,
     getRequestHeaders,
-    chat_metadata,
 } from '../../../../script.js';
 
 const EXT = 'wild-events';
+
+// ── Per-chat key ───────────────────────────────────────────
+
+function getChatKey() {
+    try {
+        const ctx = SillyTavern.getContext();
+        const chatId = (typeof ctx.getCurrentChatId === 'function' ? ctx.getCurrentChatId() : null)
+            || ctx.chatId
+            || ctx.selected_group;
+        if (chatId) return String(chatId);
+        const firstMsg = ctx.chat?.[0];
+        if (firstMsg?.send_date) return 'chat_' + String(firstMsg.send_date);
+        return 'default';
+    } catch(e) { return 'default'; }
+}
+
+function getChatStore() {
+    const s = extension_settings[EXT];
+    if (!s.chatData) s.chatData = {};
+    const key = getChatKey();
+    if (!s.chatData[key]) s.chatData[key] = { tension: 0, counts: {} };
+    return s.chatData[key];
+}
 
 const DEFAULTS = {
     enabled: true,
@@ -1024,12 +1048,12 @@ function getCustomSettingById(id) {
 // ── Connection profile helpers ─────────────────────────────
 
 function getConnectionProfiles() {
-    const ctx = getContext();
+    const ctx = SillyTavern.getContext();
     return ctx.extensionSettings?.connectionManager?.profiles || [];
 }
 
 function getDefaultProfileName() {
-    const ctx = getContext();
+    const ctx = SillyTavern.getContext();
     const cm = ctx.extensionSettings?.connectionManager;
     if (!cm) return '';
     return cm.profiles?.find(p => p.id === cm.selectedProfile)?.name || cm.profiles?.[0]?.name || '';
@@ -1196,9 +1220,9 @@ function getCountsKey(scaleId, categoryId, isPositive) {
 }
 
 function getEventCounts() {
-    if (chat_metadata == null) return {};
-    if (!chat_metadata.we_counts) chat_metadata.we_counts = {};
-    return chat_metadata.we_counts;
+    const store = getChatStore();
+    if (!store.counts) store.counts = {};
+    return store.counts;
 }
 
 function getCount(key, eventText) {
@@ -1206,17 +1230,15 @@ function getCount(key, eventText) {
 }
 
 function incrementCount(key, eventText) {
-    if (chat_metadata == null) return;
-    if (!chat_metadata.we_counts) chat_metadata.we_counts = {};
-    if (!chat_metadata.we_counts[key]) chat_metadata.we_counts[key] = {};
-    chat_metadata.we_counts[key][eventText] = (chat_metadata.we_counts[key][eventText] ?? 0) + 1;
-    saveMetadataDebounced();
+    const counts = getEventCounts();
+    if (!counts[key]) counts[key] = {};
+    counts[key][eventText] = (counts[key][eventText] ?? 0) + 1;
+    saveSettingsDebounced();
 }
 
 function resetEventCounts() {
-    if (chat_metadata == null) return;
-    chat_metadata.we_counts = {};
-    saveMetadataDebounced();
+    getChatStore().counts = {};
+    saveSettingsDebounced();
 }
 
 function pickEventType(scaleId, categoryId, isPositive) {
@@ -1240,13 +1262,12 @@ function pickEventType(scaleId, categoryId, isPositive) {
 // ── Tension helpers ────────────────────────────────────────
 
 function getTension() {
-    return chat_metadata?.wild_events_tension ?? 0;
+    return getChatStore().tension ?? 0;
 }
 
 function saveTension(val) {
-    if (chat_metadata == null) return;
-    chat_metadata.wild_events_tension = Math.max(0, Math.min(100, val));
-    saveMetadataDebounced();
+    getChatStore().tension = Math.max(0, Math.min(100, val));
+    saveSettingsDebounced();
 }
 
 // ── Core logic ─────────────────────────────────────────────
@@ -1690,7 +1711,7 @@ jQuery(async () => {
     });
     eventSource.on(event_types.CHAT_CHANGED, () => {
         s._lastResult = null;
-        // Reset panel display to zero immediately (chat_metadata hasn't switched yet)
+        // Reset panel display to zero immediately on chat switch
         $('#we_tension_val').text('0%');
         $('#we_tension_bar').css('width', '0%');
         $('#we_roll_val').text('—');
