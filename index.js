@@ -909,15 +909,24 @@ async function callAPI(messages, maxTokens = 8000) {
 
 // ── Setting generation ─────────────────────────────────────
 
-const GENERATION_SYSTEM_PROMPT = `You are a creative writing assistant that generates narrative event pools for a story randomizer.
-The user will describe a setting or genre. You must generate event concepts for that setting across three scale tiers (SUBTLE, MINOR, MAJOR) and two polarities (positive, negative).
-Each event is a short concept phrase (1-2 sentences max) that gives a direction for the narrative — NOT a literal event, but a concept the model can interpret in many ways.
-Return ONLY valid JSON, nothing else. No markdown, no backticks, no explanation.`;
+const GENERATION_SYSTEM_PROMPT = `You are a creative writing assistant generating narrative event pools for a roleplay randomizer.
+The user describes a setting. You generate event concepts across three tiers (SUBTLE, MINOR, MAJOR) and two polarities (positive, negative).
+
+Each entry is a short narrative direction — a concept the roleplay model will interpret and weave into the scene however fits. The goal is a balance: entries must feel unmistakably like they belong to this setting, but must NOT describe a specific literal outcome or name specific characters, factions, or locations.
+
+The key distinction is between WHAT HAPPENS and WHAT KIND OF THING HAPPENS:
+- Too literal (bad): "A Separatist dreadnought is destroyed, turning the tide of the sector war" — this is a scene, not a direction
+- Too vague (bad): "something unexpected happens that changes the situation" — this has no setting flavor at all
+- Correct: "a military asset believed to be secure turns out to have already been compromised" — setting-flavored, no named outcome
+
+Use the setting's vocabulary, themes, relationships, and tensions — but keep the entry open enough that the roleplay model decides exactly who, what, and how. Think: what KINDS of things happen in this world, not what specific thing happens right now.
+
+Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
 
 function buildGenerationPrompt(description) {
-    return `Setting description: "${description}"
+    return `Setting: "${description}"
 
-Generate narrative event concepts for this setting. Return a JSON object with exactly this structure:
+Generate event concepts for this setting. Return a JSON object with exactly this structure:
 {
   "SUBTLE": {
     "positive": [ /* 15 strings */ ],
@@ -933,15 +942,23 @@ Generate narrative event concepts for this setting. Return a JSON object with ex
   }
 }
 
-Rules:
-- SUBTLE: small, atmospheric, easily missed — subtle shifts in mood, environment, or interpersonal dynamics
-- MINOR: noticeable plot development — something changes, a door opens or closes
-- MAJOR: significant turning point — power shifts, revelations, crises
-- positive: moves toward resolution, opportunity, connection, or relief
-- negative: moves toward complication, danger, loss, or tension
-- Each entry is a concept/direction, not a literal scene. Short and evocative.
-- All 15 entries per category must be distinct and specific to the setting described.
-- Return only the JSON object. No commentary.`;
+Tier definitions:
+- SUBTLE: a barely noticeable shift — atmosphere, mood, a dynamic between people, a sensory detail that feels off or right
+- MINOR: a clear development — something changes, an opportunity opens or closes, a tension surfaces or eases
+- MAJOR: a significant turning point — a power shift, a truth revealed, a crisis that breaks open or resolves
+
+Polarity:
+- positive: moves toward opportunity, relief, connection, clarity, or resolution
+- negative: moves toward complication, danger, loss, exposure, or tension
+
+Rules for each entry:
+- lowercase, no period at the end
+- uses the setting's vocabulary and themes (powers, relationships, institutions, conflicts specific to this world)
+- does NOT name specific characters, factions, or locations — those belong to the actual story
+- does NOT describe the outcome — describes the KIND of thing that happens, leaving who/how open
+- distinct from the other 14 entries in its tier/polarity
+
+Return only the JSON object.`;
 }
 
 function parseGeneratedEvents(raw) {
