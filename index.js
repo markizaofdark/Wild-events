@@ -1028,16 +1028,19 @@ function injectBadge(result) {
 
     const colorClass = isPos ? 'we_badge_pos' : 'we_badge_neg';
 
-    const $badge = $(`<div class="we_chat_badge ${colorClass}" data-open="true">` +
+    const $badge = $(`<div class="we_chat_badge ${colorClass}" data-open="false">` +
         `<span class="we_badge_label">${shortLabel}</span>` +
         (fullText ? `<span class="we_badge_sep"> · </span><span class="we_badge_full">${fullText}</span>` : '') +
         `<span class="we_badge_toggle">▾</span>` +
         `</div>`);
 
+    $badge.find('.we_badge_full, .we_badge_sep').hide();
+    $badge.find('.we_badge_toggle').text('▸');
+
     $badge.on('click', function() {
         const isOpen = $(this).attr('data-open') === 'true';
         $(this).attr('data-open', String(!isOpen));
-        $(this).find('.we_badge_full, .we_badge_sep').toggle(isOpen ? false : true);
+        $(this).find('.we_badge_full, .we_badge_sep').toggle(!isOpen);
         $(this).find('.we_badge_toggle').text(isOpen ? '▸' : '▾');
     });
 

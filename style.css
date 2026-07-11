@@ -198,7 +198,8 @@
 
 .we_chat_badge {
     display: inline-flex;
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
     gap: 0;
     font-family: var(--mainFontFamily, inherit);
     font-size: 0.75em;
@@ -245,10 +246,11 @@
 
 .we_badge_full {
     opacity: 0.85;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
     min-width: 0;
+    display: block;
+    margin-top: 2px;
 }
 
 .we_badge_toggle {
