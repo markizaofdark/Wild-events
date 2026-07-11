@@ -1146,11 +1146,59 @@ function buildPool(scaleId, isPositive) {
     return baseList;
 }
 
+// ── Event frequency counters ──────────────────────────────
+
+function getCountsKey(scaleId, isPositive) {
+    return `${scaleId}:${isPositive ? 'pos' : 'neg'}`;
+}
+
+function getEventCounts() {
+    const ctx = getContext();
+    if (!ctx.chatMetadata) return {};
+    if (!ctx.chatMetadata.we_counts) ctx.chatMetadata.we_counts = {};
+    return ctx.chatMetadata.we_counts;
+}
+
+function getCount(scaleId, isPositive, eventText) {
+    const key = getCountsKey(scaleId, isPositive);
+    return getEventCounts()[key]?.[eventText] ?? 0;
+}
+
+function incrementCount(scaleId, isPositive, eventText) {
+    const ctx = getContext();
+    if (!ctx.chatMetadata) return;
+    if (!ctx.chatMetadata.we_counts) ctx.chatMetadata.we_counts = {};
+    const key = getCountsKey(scaleId, isPositive);
+    if (!ctx.chatMetadata.we_counts[key]) ctx.chatMetadata.we_counts[key] = {};
+    const counts = ctx.chatMetadata.we_counts[key];
+    counts[eventText] = (counts[eventText] ?? 0) + 1;
+    ctx.saveMetadata();
+}
+
+function resetEventCounts() {
+    const ctx = getContext();
+    if (!ctx.chatMetadata) return;
+    ctx.chatMetadata.we_counts = {};
+    ctx.saveMetadata();
+}
+
 function pickEventType(scaleId, isPositive) {
     if (scaleId === 'NONE') return null;
     const pool = buildPool(scaleId, isPositive);
     if (!pool.length) return null;
-    return pool[Math.floor(Math.random() * pool.length)];
+
+    // Weighted random: weight = 1 / (1 + count)
+    const weights = pool.map(e => 1 / (1 + getCount(scaleId, isPositive, e)));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let rand = Math.random() * total;
+    let chosen = pool[pool.length - 1];
+    for (let i = 0; i < pool.length; i++) {
+        rand -= weights[i];
+        if (rand <= 0) { chosen = pool[i]; break; }
+    }
+
+    incrementCount(scaleId, isPositive, chosen);
+    return chosen;
 }
 
 // ── Tension helpers ────────────────────────────────────────
@@ -1401,8 +1449,9 @@ function buildUI() {
                     <input type="number" id="we_step" class="text_pole" min="0.1" max="10" step="0.1" />
                     <label><small>Injection depth (0 = end of context)</small></label>
                     <input type="number" id="we_depth" class="text_pole" min="0" max="100" step="1" />
-                    <div style="margin-top:8px;">
-                        <input type="button" id="we_reset" class="menu_button" value="⟳ Reset Tension" style="width:100%;" />
+                    <div style="margin-top:8px;display:flex;gap:6px;">
+                        <input type="button" id="we_reset" class="menu_button" value="⟳ Reset Tension" style="flex:1;" />
+                        <input type="button" id="we_reset_counts" class="menu_button" value="⟳ Reset Counts" style="flex:1;" title="Reset event frequency counters for this chat" />
                     </div>
                     <label class="checkbox_label" style="margin-top:6px;">
                         <input type="checkbox" id="we_badge_toggle" />
@@ -1511,6 +1560,11 @@ jQuery(async () => {
         $('#we_impact_val').text('—').css('color', '');
         $('#we_type_row').hide();
         toastr.info('Tension reset to 0%');
+    });
+
+    $('#we_reset_counts').on('click', () => {
+        resetEventCounts();
+        toastr.info('Event frequency counters reset.');
     });
 
     // ── Connection profile selector ──
@@ -1637,5 +1691,6 @@ jQuery(async () => {
         $('#we_event_val').text('—').css('color', '');
         $('#we_impact_val').text('—').css('color', '');
         $('#we_type_row').hide();
+        // we_counts live in chatMetadata so they automatically reflect the new chat
     });
 });
