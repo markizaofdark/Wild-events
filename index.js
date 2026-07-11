@@ -4,6 +4,7 @@ import {
     eventSource,
     event_types,
     setExtensionPrompt,
+    getRequestHeaders,
 } from '../../../../script.js';
 
 // ── Constants ──────────────────────────────────────────────
@@ -16,6 +17,8 @@ const DEFAULTS = {
     label: 'WILD EVENTS',
     depth: 0,
     setting: 'none',
+    connectionProfile: '',
+    customSettings: {},   // { [id]: { id, name, description, events: { SUBTLE:{positive:[],negative:[]}, MINOR:…, MAJOR:… } } }
 };
 
 const EVENTS = [
@@ -785,19 +788,241 @@ const SETTING_EVENTS = {
 
 // ── Pool builder ───────────────────────────────────────────
 
+
+// ── Custom setting storage helpers ─────────────────────────
+
+function getCustomSettings() {
+    const s = extension_settings[EXT];
+    if (!s.customSettings) s.customSettings = {};
+    return s.customSettings;
+}
+
+function saveCustomSetting(cs) {
+    const store = getCustomSettings();
+    store[cs.id] = cs;
+    saveSettingsDebounced();
+}
+
+function deleteCustomSetting(id) {
+    const store = getCustomSettings();
+    delete store[id];
+    // If active setting was this one, reset to none
+    if (extension_settings[EXT].setting === `custom:${id}`) {
+        extension_settings[EXT].setting = 'none';
+        $('#we_setting').val('none');
+    }
+    saveSettingsDebounced();
+}
+
+function getCustomSettingById(id) {
+    return getCustomSettings()[id] || null;
+}
+
+// ── Connection profile helpers (mirror Wild Offscreen) ─────
+
+function getConnectionProfiles() {
+    const ctx = SillyTavern.getContext();
+    return ctx.extensionSettings?.connectionManager?.profiles || [];
+}
+
+function getDefaultProfileName() {
+    const ctx = SillyTavern.getContext();
+    const cm = ctx.extensionSettings?.connectionManager;
+    if (!cm) return '';
+    return cm.profiles?.find(p => p.id === cm.selectedProfile)?.name
+        || cm.profiles?.[0]?.name
+        || '';
+}
+
+// ── API call ───────────────────────────────────────────────
+
+async function callAPI(messages, maxTokens = 2000) {
+    const s = extension_settings[EXT];
+    const profiles = getConnectionProfiles();
+
+    if (!profiles.length) {
+        toastr.error('No connection profiles found. Set one up in ST settings.');
+        return null;
+    }
+
+    const profileName = s.connectionProfile || getDefaultProfileName();
+    const profile = profiles.find(p => p.name === profileName) || profiles[0];
+
+    if (!profile) {
+        toastr.error('No connection profile available.');
+        return null;
+    }
+
+    const apiName = profile.api || 'openai';
+    const cc_source = apiName === 'google' ? 'makersuite' : apiName;
+
+    const generate_data = {
+        messages,
+        model: profile.model || '',
+        temperature: 0.95,
+        frequency_penalty: 0.1,
+        presence_penalty: 0.2,
+        max_tokens: maxTokens,
+        stream: false,
+        chat_completion_source: cc_source,
+    };
+
+    if (profile['secret-id']) generate_data['secret_id'] = profile['secret-id'];
+    if (cc_source === 'custom' && profile['api-url']) {
+        generate_data['custom_url'] = profile['api-url'].trim().replace(/\/+$/, '');
+    }
+    if (cc_source === 'vertexai' && profile['api-url']) {
+        generate_data['vertexai_region'] = profile['api-url'];
+    }
+    if (cc_source === 'makersuite' || cc_source === 'claude') {
+        generate_data['use_sysprompt'] = true;
+    }
+
+    try {
+        const r = await fetch('/api/backends/chat-completions/generate', {
+            method: 'POST',
+            headers: getRequestHeaders(),
+            body: JSON.stringify(generate_data),
+        });
+
+        const text = await r.text();
+        if (!r.ok) {
+            console.error('[WildEvents] API error:', r.status, text.slice(0, 300));
+            toastr.error(`API error ${r.status}. Check console.`);
+            return null;
+        }
+
+        const data = JSON.parse(text);
+        if (cc_source === 'claude') {
+            return data?.content?.[0]?.text?.trim() || null;
+        } else {
+            return data?.choices?.[0]?.message?.content?.trim() || null;
+        }
+    } catch (e) {
+        console.error('[WildEvents] Fetch error:', e.message);
+        toastr.error('API fetch failed. Check console.');
+        return null;
+    }
+}
+
+// ── Setting generation ─────────────────────────────────────
+
+const GENERATION_SYSTEM_PROMPT = `You are a creative writing assistant that generates narrative event pools for a story randomizer.
+The user will describe a setting or genre. You must generate event concepts for that setting across three scale tiers (SUBTLE, MINOR, MAJOR) and two polarities (positive, negative).
+Each event is a short concept phrase (1-2 sentences max) that gives a direction for the narrative — NOT a literal event, but a concept the model can interpret in many ways.
+Return ONLY valid JSON, nothing else. No markdown, no backticks, no explanation.`;
+
+function buildGenerationPrompt(description) {
+    return `Setting description: "${description}"
+
+Generate narrative event concepts for this setting. Return a JSON object with exactly this structure:
+{
+  "SUBTLE": {
+    "positive": [ /* 15 strings */ ],
+    "negative": [ /* 15 strings */ ]
+  },
+  "MINOR": {
+    "positive": [ /* 15 strings */ ],
+    "negative": [ /* 15 strings */ ]
+  },
+  "MAJOR": {
+    "positive": [ /* 15 strings */ ],
+    "negative": [ /* 15 strings */ ]
+  }
+}
+
+Rules:
+- SUBTLE: small, atmospheric, easily missed — subtle shifts in mood, environment, or interpersonal dynamics
+- MINOR: noticeable plot development — something changes, a door opens or closes
+- MAJOR: significant turning point — power shifts, revelations, crises
+- positive: moves toward resolution, opportunity, connection, or relief
+- negative: moves toward complication, danger, loss, or tension
+- Each entry is a concept/direction, not a literal scene. Short and evocative.
+- All 15 entries per category must be distinct and specific to the setting described.
+- Return only the JSON object. No commentary.`;
+}
+
+function parseGeneratedEvents(raw) {
+    // Strip markdown code fences if model added them anyway
+    let cleaned = raw.trim();
+    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+    let parsed;
+    try {
+        parsed = JSON.parse(cleaned);
+    } catch (e) {
+        // Try to extract JSON object from response
+        const match = cleaned.match(/\{[\s\S]*\}/);
+        if (match) {
+            try { parsed = JSON.parse(match[0]); } catch { return null; }
+        } else {
+            return null;
+        }
+    }
+
+    // Validate structure
+    const tiers = ['SUBTLE', 'MINOR', 'MAJOR'];
+    for (const tier of tiers) {
+        if (!parsed[tier] || !Array.isArray(parsed[tier].positive) || !Array.isArray(parsed[tier].negative)) {
+            return null;
+        }
+        // Ensure at least some entries
+        if (parsed[tier].positive.length === 0 || parsed[tier].negative.length === 0) {
+            return null;
+        }
+    }
+
+    return parsed;
+}
+
+async function generateCustomSetting(name, description) {
+    const messages = [
+        { role: 'system', content: GENERATION_SYSTEM_PROMPT },
+        { role: 'user', content: buildGenerationPrompt(description) },
+    ];
+
+    const raw = await callAPI(messages, 3000);
+    if (!raw) return null;
+
+    const events = parseGeneratedEvents(raw);
+    if (!events) {
+        console.error('[WildEvents] Failed to parse generated events. Raw:', raw.slice(0, 500));
+        toastr.error('Could not parse generated events. Try again or check console.');
+        return null;
+    }
+
+    const id = `cs_${Date.now()}`;
+    return { id, name, description, events };
+}
+
+// ── Pool builder (updated to support custom settings) ──────
+
 function buildPool(scaleId, isPositive) {
     const base = EVENT_TYPES[scaleId];
     if (!base) return [];
     const baseList = isPositive ? base.positive : base.negative;
 
     const setting = extension_settings[EXT]?.setting || 'none';
-    if (setting === 'none' || !SETTING_EVENTS[setting]) return baseList;
 
-    const settingPool = SETTING_EVENTS[setting][scaleId];
-    if (!settingPool) return baseList;
-    const settingList = isPositive ? settingPool.positive : settingPool.negative;
+    // Built-in setting
+    if (setting !== 'none' && !setting.startsWith('custom:') && SETTING_EVENTS[setting]) {
+        const settingPool = SETTING_EVENTS[setting][scaleId];
+        if (!settingPool) return baseList;
+        const settingList = isPositive ? settingPool.positive : settingPool.negative;
+        return [...baseList, ...settingList];
+    }
 
-    return [...baseList, ...settingList];
+    // Custom setting
+    if (setting.startsWith('custom:')) {
+        const id = setting.slice(7);
+        const cs = getCustomSettingById(id);
+        if (cs && cs.events && cs.events[scaleId]) {
+            const settingList = isPositive ? cs.events[scaleId].positive : cs.events[scaleId].negative;
+            return [...baseList, ...(settingList || [])];
+        }
+    }
+
+    return baseList;
 }
 
 function pickEventType(scaleId, isPositive) {
@@ -827,6 +1052,15 @@ function findEvent(score) {
     return EVENTS.find(e => score >= e.min && score <= e.max) || EVENTS[0];
 }
 
+function getActiveSettingLabel() {
+    const setting = extension_settings[EXT]?.setting || 'none';
+    if (setting === 'none') return null;
+    if (!setting.startsWith('custom:')) return SETTING_LABELS[setting] || null;
+    const id = setting.slice(7);
+    const cs = getCustomSettingById(id);
+    return cs ? cs.name : null;
+}
+
 function formatPrompt(result) {
     const label = extension_settings[EXT].label || DEFAULTS.label;
     const impact = result.isPositive ? 'POSITIVE' : 'NEGATIVE';
@@ -835,8 +1069,7 @@ function formatPrompt(result) {
         return `[${label}: NO CHANGE]\nNo forced twist. Story continues naturally.`;
     }
 
-    const settingKey = extension_settings[EXT]?.setting || 'none';
-    const settingLabel = SETTING_LABELS[settingKey];
+    const settingLabel = getActiveSettingLabel();
     const eventType = result.eventType;
 
     let lines = [
@@ -902,6 +1135,66 @@ function runEvent(isNewMessage) {
 function onMessageSent() { runEvent(true); }
 function onMessageSwiped() { runEvent(false); }
 
+// ── Custom settings UI helpers ─────────────────────────────
+
+function rebuildSettingDropdown() {
+    const $sel = $('#we_setting');
+    const current = extension_settings[EXT].setting || 'none';
+
+    $sel.empty();
+    $sel.append('<option value="none">— No setting —</option>');
+    $sel.append('<option value="slavic">Slavic Fantasy</option>');
+    $sel.append('<option value="omegaverse">Omegaverse</option>');
+    $sel.append('<option value="isekai">Isekai / Fantasy</option>');
+    $sel.append('<option value="kpop">K-Pop / Idol</option>');
+    $sel.append('<option value="xianxia">Chinese Xianxia</option>');
+
+    const customs = Object.values(getCustomSettings());
+    if (customs.length) {
+        $sel.append('<option disabled>── Custom ──</option>');
+        for (const cs of customs) {
+            $sel.append(`<option value="custom:${cs.id}">${cs.name}</option>`);
+        }
+    }
+
+    $sel.val(current);
+    if ($sel.val() === null) {
+        $sel.val('none');
+        extension_settings[EXT].setting = 'none';
+    }
+}
+
+function renderCustomSettingsList() {
+    const $list = $('#we_custom_list');
+    $list.empty();
+    const customs = Object.values(getCustomSettings());
+
+    if (!customs.length) {
+        $list.append('<div class="we_cs_empty">No custom settings yet.</div>');
+        return;
+    }
+
+    for (const cs of customs) {
+        const isActive = extension_settings[EXT].setting === `custom:${cs.id}`;
+        const $card = $(`
+            <div class="we_cs_card" data-id="${cs.id}">
+                <div class="we_cs_header">
+                    <span class="we_cs_name">${cs.name}</span>
+                    <span class="we_cs_desc_preview">${cs.description.slice(0, 60)}${cs.description.length > 60 ? '…' : ''}</span>
+                </div>
+                <div class="we_cs_actions">
+                    <button class="menu_button we_cs_btn_use ${isActive ? 'we_cs_active' : ''}" data-id="${cs.id}" title="${isActive ? 'Active' : 'Use this setting'}">
+                        ${isActive ? '✓ Active' : 'Use'}
+                    </button>
+                    <button class="menu_button we_cs_btn_export" data-id="${cs.id}" title="Export">⬇ Export</button>
+                    <button class="menu_button we_cs_btn_delete we_btn_danger" data-id="${cs.id}" title="Delete">✕</button>
+                </div>
+            </div>
+        `);
+        $list.append($card);
+    }
+}
+
 // ── UI ─────────────────────────────────────────────────────
 
 function updateUI(result) {
@@ -935,6 +1228,13 @@ function updateUI(result) {
     }
 }
 
+function toggleAccordion(bodyId, iconEl) {
+    const $body = $(`#${bodyId}`);
+    const isOpen = $body.is(':visible');
+    $body.slideToggle(150);
+    $(iconEl).toggleClass('we_acc_open', !isOpen);
+}
+
 function buildUI() {
     const html = `
     <div id="we_panel" class="inline-drawer">
@@ -943,39 +1243,88 @@ function buildUI() {
             <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
         </div>
         <div class="inline-drawer-content">
-            <label class="checkbox_label">
-                <input type="checkbox" id="we_toggle" />
-                <span>Enable</span>
-            </label>
-            <div class="we_section">
-                <div class="we_row"><span>Tension</span><b id="we_tension_val">0%</b></div>
-                <div class="we_bar_bg"><div class="we_bar_fill" id="we_tension_bar"></div></div>
+
+            <!-- ── Accordion: Events ── -->
+            <div class="we_accordion">
+                <div class="we_accordion_header" data-target="we_sec_events">
+                    <span><i class="fa-solid fa-dice-d20"></i> Events</span>
+                    <i class="fa-solid fa-chevron-down we_acc_icon"></i>
+                </div>
+                <div class="we_accordion_body" id="we_sec_events">
+                    <label class="checkbox_label" style="margin-bottom:6px;">
+                        <input type="checkbox" id="we_toggle" />
+                        <span>Enable</span>
+                    </label>
+
+                    <div class="we_section">
+                        <div class="we_row"><span>Tension</span><b id="we_tension_val">0%</b></div>
+                        <div class="we_bar_bg"><div class="we_bar_fill" id="we_tension_bar"></div></div>
+                    </div>
+
+                    <div class="we_section we_results">
+                        <div class="we_row"><span>Roll</span><span id="we_roll_val">—</span></div>
+                        <div class="we_row"><span>Event</span><b id="we_event_val">—</b></div>
+                        <div class="we_type_row" id="we_type_row" style="display:none;"><span id="we_type_val"></span></div>
+                        <div class="we_row"><span>Impact</span><span id="we_impact_val">—</span></div>
+                    </div>
+
+                    <div style="margin-top:8px;">
+                        <label><small>Setting</small></label>
+                        <select id="we_setting" class="text_pole"></select>
+                    </div>
+
+                    <label style="margin-top:6px;"><small>Injection label</small></label>
+                    <input type="text" id="we_label" class="text_pole" placeholder="WILD EVENTS" />
+                    <label><small>Tension per message</small></label>
+                    <input type="number" id="we_step" class="text_pole" min="0.1" max="10" step="0.1" />
+                    <label><small>Injection depth (0 = end of context)</small></label>
+                    <input type="number" id="we_depth" class="text_pole" min="0" max="100" step="1" />
+                    <div style="margin-top:8px;">
+                        <input type="button" id="we_reset" class="menu_button" value="⟳ Reset Tension" style="width:100%;" />
+                    </div>
+                </div>
             </div>
-            <div class="we_section we_results">
-                <div class="we_row"><span>Roll</span><span id="we_roll_val">—</span></div>
-                <div class="we_row"><span>Event</span><b id="we_event_val">—</b></div>
-                <div class="we_type_row" id="we_type_row" style="display:none;"><span id="we_type_val"></span></div>
-                <div class="we_row"><span>Impact</span><span id="we_impact_val">—</span></div>
+
+            <!-- ── Accordion: Custom Settings ── -->
+            <div class="we_accordion">
+                <div class="we_accordion_header" data-target="we_sec_custom">
+                    <span><i class="fa-solid fa-wand-magic-sparkles"></i> Custom Settings</span>
+                    <i class="fa-solid fa-chevron-down we_acc_icon"></i>
+                </div>
+                <div class="we_accordion_body" id="we_sec_custom" style="display:none;">
+
+                    <label><small>Setting name</small></label>
+                    <input type="text" id="we_cs_name" class="text_pole" placeholder="e.g. Pirate Romance" />
+                    <label><small>Description <span style="opacity:0.55;">(the model uses this to generate events)</span></small></label>
+                    <textarea id="we_cs_desc" class="text_pole" rows="3" placeholder="e.g. A swashbuckling romance set on the high seas in the 17th century. Tension between rival captains, ship crews, port politics, and a slow-burn enemies-to-lovers dynamic."></textarea>
+
+                    <div style="display:flex;gap:6px;margin-top:6px;">
+                        <button id="we_cs_generate" class="menu_button" style="flex:1;">
+                            <i class="fa-solid fa-bolt"></i> Generate
+                        </button>
+                        <label class="menu_button" style="flex:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;">
+                            <i class="fa-solid fa-file-import"></i> Import
+                            <input type="file" id="we_cs_import_file" accept=".json" style="display:none;" />
+                        </label>
+                    </div>
+
+                    <div id="we_cs_status" style="font-size:0.8em;opacity:0.6;margin-top:4px;min-height:1.2em;font-style:italic;"></div>
+
+                    <div id="we_custom_list" style="margin-top:8px;"></div>
+
+                    <div style="margin-top:8px;">
+                        <label><small>Connection profile</small></label>
+                        <div style="display:flex;gap:6px;">
+                            <select id="we_profile_select" class="text_pole" style="flex:1;"></select>
+                            <button id="we_profile_refresh" class="menu_button" title="Refresh profiles" style="flex-shrink:0;padding:4px 8px;">
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                </div>
             </div>
-            <hr>
-            <label><small>Setting</small></label>
-            <select id="we_setting" class="text_pole">
-                <option value="none">— No setting —</option>
-                <option value="slavic">Slavic Fantasy</option>
-                <option value="omegaverse">Omegaverse</option>
-                <option value="isekai">Isekai / Fantasy</option>
-                <option value="kpop">K-Pop / Idol</option>
-                <option value="xianxia">Chinese Xianxia</option>
-            </select>
-            <label><small>Injection label</small></label>
-            <input type="text" id="we_label" class="text_pole" placeholder="WILD EVENTS" />
-            <label><small>Tension per message</small></label>
-            <input type="number" id="we_step" class="text_pole" min="0.1" max="10" step="0.1" />
-            <label><small>Injection depth (0 = end of context)</small></label>
-            <input type="number" id="we_depth" class="text_pole" min="0" max="100" step="1" />
-            <div style="margin-top: 8px;">
-                <input type="button" id="we_reset" class="menu_button" value="⟳ Reset Tension" />
-            </div>
+
         </div>
     </div>`;
     $('#extensions_settings').append(html);
@@ -992,13 +1341,23 @@ jQuery(async () => {
     }
     const s = extension_settings[EXT];
 
+    // Restore UI state
     $('#we_toggle').prop('checked', s.enabled);
     $('#we_label').val(s.label);
     $('#we_step').val(s.step);
     $('#we_depth').val(s.depth);
-    $('#we_setting').val(s.setting || 'none');
+    rebuildSettingDropdown();
     updateUI(s._lastResult || null);
+    renderCustomSettingsList();
 
+    // ── Accordion toggles ──
+    $(document).on('click', '.we_accordion_header', function () {
+        const target = $(this).data('target');
+        const $icon = $(this).find('.we_acc_icon');
+        toggleAccordion(target, $icon[0]);
+    });
+
+    // ── Events accordion controls ──
     $('#we_toggle').on('change', function () {
         s.enabled = this.checked;
         saveSettingsDebounced();
@@ -1018,6 +1377,116 @@ jQuery(async () => {
         toastr.info('Tension reset to 0%');
     });
 
+    // ── Connection profile selector ──
+    function refreshProfileSelect() {
+        const profiles = getConnectionProfiles();
+        const $sel = $('#we_profile_select');
+        $sel.empty();
+        if (!profiles.length) {
+            $sel.append('<option value="">— no profiles found —</option>');
+            return;
+        }
+        const currentName = s.connectionProfile || getDefaultProfileName();
+        for (const p of profiles) {
+            $sel.append(`<option value="${p.name}" ${p.name === currentName ? 'selected' : ''}>${p.name} (${p.api || '?'} / ${p.model || 'no model'})</option>`);
+        }
+        if (!s.connectionProfile) s.connectionProfile = currentName;
+    }
+
+    refreshProfileSelect();
+    $('#we_profile_select').on('change', function () { s.connectionProfile = this.value; saveSettingsDebounced(); });
+    $('#we_profile_refresh').on('click', () => { refreshProfileSelect(); toastr.info('Profiles refreshed.'); });
+
+    // ── Generate custom setting ──
+    $('#we_cs_generate').on('click', async function () {
+        const name = $('#we_cs_name').val().trim();
+        const desc = $('#we_cs_desc').val().trim();
+
+        if (!name) { toastr.warning('Enter a setting name.'); return; }
+        if (!desc) { toastr.warning('Enter a setting description.'); return; }
+
+        const $btn = $(this);
+        $btn.prop('disabled', true);
+        $('#we_cs_status').text('Generating… this may take a moment.');
+
+        const cs = await generateCustomSetting(name, desc);
+
+        $btn.prop('disabled', false);
+
+        if (!cs) {
+            $('#we_cs_status').text('Generation failed. Check connection profile and console.');
+            return;
+        }
+
+        saveCustomSetting(cs);
+        rebuildSettingDropdown();
+        renderCustomSettingsList();
+        $('#we_cs_status').text(`✓ "${cs.name}" generated and saved.`);
+        $('#we_cs_name').val('');
+        $('#we_cs_desc').val('');
+        toastr.success(`Setting "${cs.name}" created!`);
+    });
+
+    // ── Custom setting list actions (delegated) ──
+    $('#we_custom_list').on('click', '.we_cs_btn_use', function () {
+        const id = $(this).data('id');
+        s.setting = `custom:${id}`;
+        saveSettingsDebounced();
+        rebuildSettingDropdown();
+        renderCustomSettingsList();
+        toastr.info(`Setting activated.`);
+    });
+
+    $('#we_custom_list').on('click', '.we_cs_btn_export', function () {
+        const id = $(this).data('id');
+        const cs = getCustomSettingById(id);
+        if (!cs) return;
+        const blob = new Blob([JSON.stringify(cs, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `we_setting_${cs.name.replace(/\s+/g, '_').toLowerCase()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    $('#we_custom_list').on('click', '.we_cs_btn_delete', function () {
+        const id = $(this).data('id');
+        const cs = getCustomSettingById(id);
+        if (!cs) return;
+        if (!confirm(`Delete setting "${cs.name}"?`)) return;
+        deleteCustomSetting(id);
+        rebuildSettingDropdown();
+        renderCustomSettingsList();
+        toastr.info(`Setting "${cs.name}" deleted.`);
+    });
+
+    // ── Import ──
+    $('#we_cs_import_file').on('change', function () {
+        const file = this.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const cs = JSON.parse(e.target.result);
+                // Basic validation
+                if (!cs.id || !cs.name || !cs.events) throw new Error('Invalid format');
+                if (!cs.events.SUBTLE || !cs.events.MINOR || !cs.events.MAJOR) throw new Error('Missing tiers');
+                // Give it a new id to avoid collisions
+                cs.id = `cs_${Date.now()}`;
+                saveCustomSetting(cs);
+                rebuildSettingDropdown();
+                renderCustomSettingsList();
+                toastr.success(`Imported "${cs.name}".`);
+            } catch (err) {
+                toastr.error('Import failed: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+        this.value = '';
+    });
+
+    // ── ST event hooks ──
     eventSource.on(event_types.MESSAGE_SENT, onMessageSent);
     eventSource.on(event_types.MESSAGE_SWIPED, onMessageSwiped);
     eventSource.on(event_types.CHAT_CHANGED, () => {

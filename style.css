@@ -52,3 +52,144 @@
     line-height: 1.35;
     font-style: italic;
 }
+
+/* ── Accordion ──────────────────────────────────────────── */
+
+.we_accordion {
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor) 15%, transparent);
+    border-radius: 4px;
+    margin: 4px 0;
+    overflow: hidden;
+}
+
+.we_accordion_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    cursor: pointer;
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 5%, transparent);
+    user-select: none;
+    font-weight: 600;
+    font-size: 0.88em;
+    gap: 8px;
+}
+
+.we_accordion_header:hover {
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 10%, transparent);
+}
+
+.we_accordion_header span {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+.we_accordion_header i:not(.we_acc_icon) {
+    opacity: 0.7;
+    font-size: 0.9em;
+}
+
+.we_acc_icon {
+    font-size: 0.75em;
+    opacity: 0.5;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+}
+
+.we_acc_icon.we_acc_open {
+    transform: rotate(180deg);
+}
+
+.we_accordion_body {
+    padding: 8px 10px 10px 10px;
+}
+
+/* ── Custom settings cards ──────────────────────────────── */
+
+.we_cs_empty {
+    font-size: 0.85em;
+    opacity: 0.45;
+    text-align: center;
+    padding: 8px 0;
+    font-style: italic;
+}
+
+.we_cs_card {
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor) 15%, transparent);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.we_cs_header {
+    padding: 5px 8px;
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 5%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.we_cs_name {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.we_cs_desc_preview {
+    font-size: 0.78em;
+    opacity: 0.55;
+    font-style: italic;
+}
+
+.we_cs_actions {
+    display: flex;
+    gap: 4px;
+    padding: 5px 8px;
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 3%, transparent);
+}
+
+.we_cs_actions .menu_button {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    min-width: unset;
+    height: unset;
+    line-height: 1.5;
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.we_cs_btn_use.we_cs_active {
+    color: #66bb6a !important;
+    border-color: color-mix(in srgb, #66bb6a 40%, transparent) !important;
+}
+
+/* ── Danger button ──────────────────────────────────────── */
+
+.we_btn_danger {
+    color: #ef5350 !important;
+    border-color: color-mix(in srgb, #ef5350 30%, transparent) !important;
+    flex: 0 0 auto !important;
+}
+
+.we_btn_danger:hover {
+    background: color-mix(in srgb, #ef5350 15%, transparent) !important;
+}
+
+/* ── Status line ────────────────────────────────────────── */
+
+#we_cs_status {
+    min-height: 1.2em;
+    transition: opacity 0.2s;
+}
+
+/* ── Textarea in custom settings ────────────────────────── */
+
+#we_cs_desc {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    font-size: 0.85em;
+    margin-bottom: 2px;
+}
