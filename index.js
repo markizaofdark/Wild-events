@@ -1033,7 +1033,7 @@ function ensureWidget() {
     const $widget = $(`
         <div id="we_widget" style="display:none;">
             <button id="we_fab" aria-label="Wild Events">
-                <i class="fa-solid fa-dice-d6" style="font-size:16px;pointer-events:none;"></i>
+                <i class="fa-solid fa-yin-yang" style="font-size:16px;pointer-events:none;"></i>
                 <span id="we_fab_dot"></span>
             </button>
             <div id="we_popup" style="display:none;">
