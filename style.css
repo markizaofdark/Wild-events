@@ -53,14 +53,6 @@
     font-style: italic;
 }
 
-/* Category row in panel */
-#we_category_row span:last-child {
-    font-size: 0.82em;
-    opacity: 0.65;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
 /* ── Accordion ──────────────────────────────────────────── */
 
 .we_accordion {
@@ -283,15 +275,6 @@
 
 .we_pop_arrow_pos { color: #66bb6a; }
 .we_pop_arrow_neg { color: #ef5350; }
-
-#we_pop_category {
-    font-size: 10px;
-    color: var(--SmartThemeBodyColor, #ccc);
-    opacity: 0.5;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin-bottom: 4px;
-}
 
 #we_pop_event {
     font-size: 12px;
