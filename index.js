@@ -7,8 +7,6 @@ import {
     getRequestHeaders,
 } from '../../../../script.js';
 
-// ── Constants ──────────────────────────────────────────────
-
 const EXT = 'wild-events';
 
 const DEFAULTS = {
@@ -17,779 +15,984 @@ const DEFAULTS = {
     label: 'WILD EVENTS',
     depth: 0,
     setting: 'none',
+    showBadge: true,
     connectionProfile: '',
     customSettings: {},
-    showBadge: true,
 };
 
-const EVENTS = [
-    { min: 1,  max: 10, id: 'NONE',   name: 'NO CHANGE',       adj: null,     desc: 'No forced external change. Story flows naturally.' },
-    { min: 11, max: 14, id: 'SUBTLE', name: 'SUBTLE CHANGE',    adj: null },
-    { min: 15, max: 19, id: 'MINOR',  name: 'MINOR PLOT TWIST', adj: null },
-    { min: 20, max: 24, id: 'MAJOR',  name: 'MAJOR PLOT TWIST', adj: 'reduce' },
-    { min: 25, max: 99, id: 'GIANT',  name: 'GIANT PLOT TWIST', adj: 'reset' },
+// ── Scale tiers ────────────────────────────────────────────
+
+const SCALES = [
+    { min: 1,  max: 10, id: 'NONE',         name: 'NO CHANGE',       adj: null },
+    { min: 11, max: 14, id: 'SUBTLE',       name: 'SUBTLE CHANGE',    adj: null },
+    { min: 15, max: 18, id: 'MINOR',        name: 'MINOR TWIST',      adj: null },
+    { min: 19, max: 22, id: 'TURNING',      name: 'TURNING POINT',    adj: 'reduce25' },
+    { min: 23, max: 26, id: 'MAJOR',        name: 'MAJOR TWIST',      adj: 'reduce50' },
+    { min: 27, max: 99, id: 'WORLDSHAKING', name: 'WORLD-SHAKING',    adj: 'reset' },
 ];
 
-const SETTING_LABELS = {
-    none:    null,
-    slavic:  'Slavic Fantasy',
-    omegaverse: 'Omegaverse',
-    isekai:  'Isekai / Fantasy',
-    kpop:    'K-Pop / Idol',
-    xianxia: 'Chinese Xianxia',
-};
+// ── Event categories with weights ──────────────────────────
+
+const CATEGORIES = [
+    { id: 'INTERPERSONAL', name: 'Interpersonal', weight: 30 },
+    { id: 'EMOTIONAL',     name: 'Emotional',     weight: 25 },
+    { id: 'ENVIRONMENTAL', name: 'Environmental', weight: 20 },
+    { id: 'DISCOVERY',     name: 'Discovery',     weight: 15 },
+    { id: 'EXTERNAL',      name: 'External',      weight: 10 },
+];
 
 // ── Base event pools ───────────────────────────────────────
+// Structure: EVENTS[scaleId][categoryId] = { positive: [...], negative: [...] }
 
-const EVENT_TYPES = {
-    SUBTLE: {
+const EVENTS = {
+
+// ════════════════════════════════════════════════════════════
+// SUBTLE
+// ════════════════════════════════════════════════════════════
+
+SUBTLE: {
+    INTERPERSONAL: {
         positive: [
-            'an unexpected piece of information reaches the right person at the right time',
-            'a small gesture of goodwill from a stranger changes the mood of the scene',
-            'something lost is found in an unlikely place',
-            'a minor inconvenience resolves itself without intervention',
-            'an overheard fragment of conversation proves unexpectedly useful',
-            'someone arrives slightly earlier than expected',
-            'a small environmental detail creates an opportunity',
-            'an old favor is quietly repaid',
-            'the atmosphere shifts in a way that eases tension',
-            'a chance encounter with a familiar face',
-            'something that seemed broken turns out to still work',
-            'a small distraction provides cover for something else',
-            'an offhand remark accidentally contains useful truth',
-            'a minor delay leads to something being avoided',
-            'the weather or environment becomes briefly favorable',
-            'someone notices a detail others have missed',
-            'a forgotten resource turns out to be available',
-            'a small misunderstanding is cleared up before it grows',
-            'an unexpected moment of privacy presents itself',
-            'something trivial provides an unlikely insight',
+            'a brief exchange between two people carries more warmth than either of them expected',
+            'someone remembers a small detail about another person that shows they have been paying attention',
+            'a moment of shared silence between two people feels comfortable rather than awkward',
+            'a gesture of casual trust — handing something over, turning their back — passes without comment but is noticed',
+            'someone adjusts their behavior slightly to accommodate another person without being asked',
+            'a look passes between two people that communicates something words have not yet addressed',
+            'someone defends another person in a small way that the person being defended does not notice',
+            'a minor disagreement resolves itself through a willingness neither party had to show',
+            'two people who have been distant find themselves briefly aligned by a shared reaction',
+            'someone asks a question that shows they understand more about another person than expected',
+            'a small act of consideration from an unexpected source shifts the mood between people',
+            'a nickname or inside reference is used for the first time and it lands well',
+            'someone mirrors another person unconsciously — a posture, a phrase, a habit',
+            'a moment of unexpected honesty slips out in casual conversation',
+            'someone notices they are being watched by a person whose opinion they did not realize they cared about',
         ],
         negative: [
-            'a minor object breaks or malfunctions at an inconvenient moment',
-            'an overheard fragment of conversation creates a wrong impression',
-            'someone arrives slightly earlier than expected and sees something they should not',
-            'a small environmental detail becomes an obstacle',
-            'a brief distraction causes something important to be missed',
-            'an offhand remark lands worse than intended',
-            'a minor delay has a ripple effect on something else',
-            'the weather or environment becomes briefly unpleasant',
-            'something assumed to be available turns out not to be',
-            'a small misunderstanding is not caught in time',
-            'a moment of inattention costs more than expected',
-            'something that seemed fine reveals a small flaw',
-            'an unwanted face appears at an inconvenient moment',
-            'a minor promise is unexpectedly called in',
-            'a small noise or movement draws unwanted attention',
-            'something private is accidentally made visible',
-            'a routine thing takes unexpectedly long',
-            'a trivial detail triggers an unexpected reaction in someone',
-            'a message arrives at the worst possible moment',
-            'a small assumption turns out to have been wrong all along',
+            'a brief exchange carries an edge that was not there before',
+            'someone says the right words but the tone does not match',
+            'a gesture meant to be comforting lands as patronizing',
+            'two people reach for the same moment of authority and the overlap is noticeable',
+            'someone hesitates before responding in a way that the other person registers',
+            'a look passes between two people and one of them looks away too quickly',
+            'a small promise is forgotten and the forgetting is noticed',
+            'someone adjusts their behavior around a specific person in a way that suggests avoidance',
+            'a joke falls flat because it accidentally touches something real',
+            'two people who are usually aligned react differently to the same thing',
+            'someone overhears something about themselves that was not meant for them',
+            'a moment of physical proximity creates tension where there was none before',
+            'someone notices they have been excluded from something small but deliberate',
+            'a question is asked that feels more like a test than genuine curiosity',
+            'someone catches themselves performing for another person and does not like it',
         ],
     },
-    MINOR: {
+    EMOTIONAL: {
         positive: [
-            'an unexpected ally appears with useful resources or knowledge',
-            'a piece of information surfaces that reframes an ongoing problem',
-            'someone in a position of influence shows unexpected favor',
-            'a previously closed path becomes available',
-            'an old connection resurfaces at a useful moment',
-            'a misunderstanding between two parties is accidentally resolved',
-            'an outside party intervenes in a way that benefits the current situation',
-            'a hidden resource or advantage is revealed',
-            'someone changes their stance without explanation',
-            'an obstacle removes itself through unrelated circumstances',
-            'a rival makes an error that creates an opening',
-            'a small victory has larger implications than expected',
-            'information shared in confidence proves more valuable than anticipated',
-            'an event elsewhere draws attention away from the current situation',
-            'a risk taken earlier pays off in an unexpected way',
-            'someone offers help without being asked',
-            'a dangerous situation defuses before it escalates',
-            'an unexpected delay creates space to reconsider something important',
-            'a third party\'s interference accidentally helps',
-            'something believed to be permanent turns out to be negotiable',
+            'a moment of unexpected calm arrives after a period of tension',
+            'something small — a sound, a smell, a texture — triggers a genuinely pleasant memory',
+            'a feeling that has been sitting unnamed finally finds its shape and it is manageable',
+            'someone realizes they are less afraid than they expected to be',
+            'a weight that has been present for a while lifts slightly without obvious cause',
+            'a moment of genuine amusement breaks through a serious mood',
+            'someone notices they have been holding tension in their body and consciously releases it',
+            'a familiar comfort — a habit, a ritual, a place — provides its usual reassurance',
+            'someone catches themselves smiling without having decided to',
+            'a thought that usually spirals into worry simply passes through without catching',
+            'a small accomplishment provides a disproportionate sense of satisfaction',
+            'someone realizes they trust their own judgment more than they used to',
+            'a moment of beauty in the environment registers even through distraction',
+            'someone accepts a compliment without deflecting it for the first time',
+            'a feeling of safety settles in without needing external confirmation',
         ],
         negative: [
-            'a trusted source of information turns out to be unreliable',
-            'an outside party interferes in a way that complicates the current situation',
-            'a previously available path closes unexpectedly',
-            'someone in a position of influence withdraws their support',
-            'a hidden weakness or flaw is exposed at a bad moment',
-            'an old conflict resurfaces through no one\'s direct fault',
-            'a misunderstanding between two parties deepens rather than resolves',
-            'a carefully maintained arrangement falls apart over something minor',
-            'someone changes their stance without explanation and not in a good way',
-            'a risk taken earlier creates unforeseen complications now',
-            'an event elsewhere demands attention at the worst possible time',
-            'something believed to be settled turns out not to be',
-            'a third party\'s presence changes the dynamic in an unwelcome way',
-            'an obligation surfaces that cannot be easily ignored',
-            'a small deception unravels and takes something else down with it',
-            'a dangerous situation escalates before it can be addressed',
-            'an advantage is lost through circumstances outside anyone\'s control',
-            'something shared in confidence reaches the wrong ears',
-            'a past decision creates a complication in the present',
-            'an unexpected cost arrives alongside an expected benefit',
+            'a familiar anxiety surfaces without an obvious trigger',
+            'a feeling that was manageable a moment ago suddenly is not',
+            'someone catches themselves rehearsing a conversation that has not happened yet',
+            'a moment of stillness allows a thought that has been avoided to arrive',
+            'an emotional reaction is disproportionate to what caused it and the person knows it',
+            'something small — a sound, a smell, a texture — triggers an unwelcome memory',
+            'a creeping sense of being watched or judged settles in without evidence',
+            'someone realizes they have been clenching their jaw or fists without noticing',
+            'a moment of self-awareness arrives at an inconvenient time',
+            'a mood shift happens fast enough that the person experiencing it cannot hide it',
+            'someone notices they are performing an emotion they do not actually feel',
+            'a brief flash of anger arrives at something that does not deserve it',
+            'a thought arrives uninvited: what if this does not work',
+            'a familiar coping mechanism fails to provide its usual relief',
+            'someone recognizes a pattern in their own behavior and does not like what it means',
         ],
     },
-    MAJOR: {
+    ENVIRONMENTAL: {
         positive: [
-            'a significant threat is neutralized by an external force',
-            'a long-hidden truth surfaces and changes the situation dramatically',
-            'an unexpected alliance is offered under surprising terms',
-            'something previously out of reach becomes attainable',
-            'a powerful figure intervenes on behalf of someone without being asked',
-            'a crisis elsewhere redirects pressure away from the current situation',
-            'a secret kept by someone else turns out to be protective rather than dangerous',
-            'an enemy\'s plan fails due to factors entirely outside the protagonists\' control',
-            'a major resource or opportunity arrives from an unexpected direction',
-            'two separate problems solve each other when brought together',
-            'a sacrifice made earlier is returned in a meaningful way',
-            'a long-standing obstacle is removed by someone else\'s actions',
-            'a catastrophic outcome is narrowly avoided through luck or timing',
-            'something thought permanently lost is recovered',
-            'a major shift in circumstances resets the balance of power',
-            'an unexpected revelation makes a seemingly impossible situation workable',
-            'someone with the ability to change everything chooses to do so',
-            'a dangerous confrontation ends without the expected consequences',
-            'a painful impasse is broken by an outside development',
-            'a hidden strength or capability reveals itself under pressure',
+            'the quality of light in the space changes in a way that makes everything feel different',
+            'a sound from the environment — birdsong, rain, wind — provides an unexpected comfort',
+            'the temperature shifts in a way that suits the moment',
+            'a detail of the surroundings that was previously unnoticed proves useful or beautiful',
+            'the space feels briefly larger or more open than it usually does',
+            'a scent in the air shifts to something pleasant or grounding',
+            'the environment provides a natural boundary or shelter at the right moment',
+            'something in the surroundings catches light in a way that draws attention and is worth looking at',
+            'the noise level drops and the quiet feels earned rather than empty',
+            'a path or passage that was obscured becomes visible',
+            'the weather shifts in a direction that makes the current situation easier',
+            'a natural feature of the landscape offers an unexpected vantage point or advantage',
+            'something growing — a plant, a pattern, a change — indicates the environment is healthy',
+            'the space responds to human presence in a way that feels welcoming rather than indifferent',
+            'a familiar environment reveals a detail that has always been there but was never noticed',
         ],
         negative: [
-            'a significant betrayal is revealed — not recent, but long-running',
-            'a major external force enters the situation with its own agenda',
-            'something that seemed secure collapses without warning',
-            'a truth surfaces that changes the meaning of past events',
-            'a crisis arrives from a direction no one was watching',
-            'a powerful figure withdraws protection or support at a critical moment',
-            'an alliance fractures under pressure that was not anticipated',
-            'a plan that seemed to be working is revealed to have been compromised',
-            'a previous action creates consequences that can no longer be delayed',
-            'a hidden threat that has been building finally makes itself visible',
-            'someone trusted makes a decision that cannot be undone',
-            'a resource or advantage disappears at the worst possible moment',
-            'two separate problems converge into something worse than either alone',
-            'a secret is exposed in front of the worst possible audience',
-            'a dangerous force is accidentally awakened or provoked',
-            'the cost of a past choice arrives all at once',
-            'an irreversible mistake is made before anyone realizes what is happening',
-            'a situation spirals past the point where the usual solutions apply',
-            'someone disappears or becomes unavailable at a critical moment',
-            'a major assumption everyone shared turns out to have been completely wrong',
+            'the quality of light in the space changes in a way that makes everything feel wrong',
+            'a sound from the environment sets teeth on edge without obvious reason',
+            'the temperature shifts uncomfortably and there is no easy remedy',
+            'a smell arrives that does not belong and its source is not immediately obvious',
+            'the space feels smaller or more enclosed than it should',
+            'shadows fall in a way that makes the environment harder to read',
+            'the environment offers no natural shelter or boundary when one is needed',
+            'something in the surroundings draws attention and what it draws attention to is unsettling',
+            'the noise level rises from a source that cannot be easily addressed',
+            'a path or passage that was accessible becomes blocked or less certain',
+            'the weather shifts in a direction that complicates everything',
+            'a natural feature of the landscape that seemed stable proves less reliable than assumed',
+            'something about the environment suggests recent disturbance — but by what',
+            'the space feels like it is not meant for the people currently in it',
+            'a detail of the surroundings that was always there suddenly feels ominous in context',
         ],
     },
-    GIANT: {
+    DISCOVERY: {
         positive: [
-            'a catastrophe is averted by the narrowest possible margin and the world shifts because of it',
-            'an enemy becomes an ally through circumstances that would have seemed impossible',
-            'something believed to be permanent and immovable is suddenly gone',
-            'a force larger than the current conflict intervenes and resets the stakes',
-            'a sacrifice made long ago pays off in a way no one expected or could have planned',
-            'the truth behind a long-running mystery is finally revealed and it changes everything',
-            'a major power structure collapses in a way that opens entirely new possibilities',
-            'someone thought lost returns, changed, at exactly the right moment',
-            'a decision that seemed small at the time is revealed to have shaped everything since',
-            'an impossible alliance holds when it was expected to shatter',
-            'a source of ongoing threat or suffering is permanently removed',
-            'something dormant and forgotten wakes up in a way that benefits the current situation',
-            'a long-running deception is exposed and the aftermath is better than the lie',
-            'an enemy destroys themselves without any outside intervention',
-            'a single revelation recontextualizes the entire arc of events up to now',
-            'a crisis of historic proportions resolves in an unexpected direction',
-            'what everyone believed to be an ending turns out to be a beginning',
-            'a power or resource of enormous significance changes hands without violence',
-            'an external catastrophe unites previously opposed forces',
-            'something that was supposed to be impossible simply happens',
+            'a small detail that was previously overlooked clicks into place with something else',
+            'a piece of information arrives casually that turns out to matter',
+            'someone stumbles onto something they were not looking for and it is useful',
+            'a connection between two previously separate things becomes visible',
+            'a question someone forgot to ask is answered incidentally',
+            'something that seemed random reveals a pattern on second look',
+            'a resource or option that was not considered turns out to be available',
+            'a misunderstanding is corrected and what replaces it is more useful than the original assumption',
+            'something written, carved, or left behind by someone else proves relevant',
+            'a familiar thing is seen from a new angle and the new angle reveals something',
+            'a guess turns out to be more accurate than expected',
+            'someone recognizes something they have seen before in a completely different context',
+            'a piece of the puzzle arrives without effort — it was just sitting there',
+            'an assumption that was about to be acted on is corrected just in time',
+            'a source of information that was considered unreliable turns out to be accurate about this one thing',
         ],
         negative: [
-            'a catastrophe arrives that changes the shape of the world going forward',
-            'an ally becomes an enemy through a revelation neither side can take back',
-            'something believed to be safe and permanent is destroyed or lost',
-            'a force larger than the current conflict arrives with its own agenda and dwarfs everything else',
-            'a long-running deception is exposed and the fallout is worse than anyone feared',
-            'a source of stability that everyone relied on disappears',
-            'a secret kept by someone trusted turns out to have been the foundation of something dangerous',
-            'a past event reasserts itself and cannot be managed or delayed any further',
-            'an irreversible decision is made by someone with the power to make it',
-            'a power structure collapses and the chaos it releases is worse than the structure itself',
-            'something dormant and forgotten wakes up in a way that threatens everything',
-            'a single action sets off a chain of consequences that cannot be stopped',
-            'a sacrifice is demanded that has no acceptable alternative',
-            'an outside force permanently closes off options that seemed available',
-            'what everyone believed to be a beginning turns out to have been an ending',
-            'a truth is revealed that cannot be unknown and changes every relationship in its wake',
-            'an enemy proves to be far more significant than anyone understood',
-            'a crisis of historic proportions resolves in the worst possible direction',
-            'the cost of everything done up to this point arrives simultaneously',
-            'something that was supposed to be impossible simply happens and it is terrible',
+            'a small detail that was previously overlooked turns out to have been important',
+            'something assumed to be true reveals a crack on closer inspection',
+            'a discovery is made that would have been useful earlier — too late now',
+            'a connection between two things becomes visible and the implication is uncomfortable',
+            'information arrives that contradicts something that was being relied on',
+            'something that was not meant to be found is found',
+            'a familiar thing seen from a new angle looks less reassuring',
+            'a guess turns out to have been wrong in a way that matters',
+            'something written, carved, or left behind by someone else is discovered and its content is troubling',
+            'a piece of information that was given casually turns out to have been incomplete',
+            'a source of information that was trusted shows signs of unreliability',
+            'a pattern becomes visible and the pattern suggests something no one wants to consider',
+            'an assumption that was never questioned turns out to have a flaw',
+            'something hidden in plain sight is noticed and once seen it cannot be unseen',
+            'a discovery raises a question that does not have a comfortable answer',
         ],
     },
+    EXTERNAL: {
+        positive: [
+            'a sound from outside the immediate scene suggests something is going well elsewhere',
+            'someone not directly involved in the scene contributes something small but helpful',
+            'news arrives from elsewhere and it is better than expected',
+            'an interruption that seems annoying at first proves to be well-timed',
+            'something changes in the broader situation that slightly eases local pressure',
+            'a message or signal arrives from outside that is reassuring',
+            'an external deadline or pressure turns out to have been extended or reduced',
+            'someone outside the current circle does something that benefits those inside it without knowing',
+            'a resource from an external source becomes available without being requested',
+            'an external authority or force makes a decision that happens to help',
+            'a disturbance from outside draws away something that was causing problems',
+            'a visitor or newcomer brings energy that shifts the mood positively',
+            'an external event creates a brief window of opportunity',
+            'something that was expected to arrive from outside arrives early and in good condition',
+            'the external situation is more stable than the characters assumed it to be',
+        ],
+        negative: [
+            'a sound from outside the immediate scene suggests something is wrong elsewhere',
+            'an interruption arrives at the worst possible moment',
+            'news from elsewhere changes the context of what is happening here',
+            'someone not involved in the scene makes a decision that affects those who are',
+            'an external deadline or pressure tightens without warning',
+            'a message or signal arrives from outside and its content is unwelcome',
+            'something changes in the broader situation that increases local pressure',
+            'an external authority or force makes a decision that complicates things',
+            'a disturbance from outside demands attention that cannot be spared',
+            'a visitor or newcomer brings tension from elsewhere into the current scene',
+            'an external event closes a window that was assumed to be open',
+            'something expected from outside is delayed or does not arrive',
+            'an external obligation resurfaces at an inconvenient time',
+            'a resource that depended on external supply is cut off or reduced',
+            'the external situation is less stable than the characters assumed it to be',
+        ],
+    },
+},
+
+
+// ════════════════════════════════════════════════════════════
+// MINOR
+// ════════════════════════════════════════════════════════════
+
+MINOR: {
+    INTERPERSONAL: {
+        positive: [
+            'someone takes a visible risk on behalf of another person without being sure it will be appreciated',
+            'a conflict between two people resolves not through agreement but through one of them choosing the relationship over being right',
+            'a third person says something about the relationship between two others that reframes how they see each other',
+            'someone who has been holding back offers genuine help and the offer is not transactional',
+            'a shared difficulty bonds two people who did not previously have reason to trust each other',
+            'a previously one-sided relationship shows signs of becoming reciprocal',
+            'someone apologizes and the apology is specific enough to prove they understood what they did',
+            'a favor is returned in a way that shows the returner paid attention to what would actually help',
+            'two people discover a shared experience neither of them talks about and the recognition is mutual',
+            'someone stands up for another person in a context where doing so costs them something',
+            'a barrier between two people — formality, rank, old resentment — drops for the first time',
+            'someone admits they were wrong to a person whose respect they value',
+            'a gesture of trust is reciprocated in a way that raises the stakes for both people',
+            'two people who have been circling each other finally have a real conversation',
+            'someone reveals something vulnerable and the response they get is better than what they feared',
+        ],
+        negative: [
+            'a promise is broken and both parties know it was a real promise not a casual one',
+            'someone discovers they have been talked about in a way that changes how they feel about the speaker',
+            'a relationship that seemed stable reveals a fault line neither person knew was there',
+            'someone does something well-intentioned that makes things significantly worse for the other person',
+            'loyalty is tested and the result is ambiguous — not a betrayal, but not reassuring either',
+            'a third person becomes involved in a dynamic between two others and the triangle creates pressure',
+            'someone realizes they have been managing another person rather than relating to them honestly',
+            'a boundary is crossed that was never explicitly stated but both people knew it existed',
+            'two people want the same thing and there is not enough of it for both',
+            'someone who was relied on reveals they are dealing with something that limits their capacity',
+            'an old grievance that was thought resolved resurfaces in a new form',
+            'someone makes a choice that benefits themselves at a visible cost to another person',
+            'a misunderstanding between two people solidifies into something harder to fix than the original issue',
+            'someone realizes they have become dependent on a person who may not stay',
+            'an alliance of convenience starts to develop real expectations that not everyone shares',
+        ],
+    },
+    EMOTIONAL: {
+        positive: [
+            'a fear that has been driving decisions is named aloud and loses some of its power',
+            'someone allows themselves to want something they had been pretending not to care about',
+            'an emotional pattern that has been repeating finally breaks in a small but real way',
+            'someone finds they are capable of something they genuinely believed they could not do',
+            'a moment of genuine rest — mental, not just physical — arrives and is accepted',
+            'an emotion that was tangled with guilt separates from it and becomes simply itself',
+            'someone chooses honesty over self-protection and the honesty does not cost as much as feared',
+            'a memory that has been avoided is faced and turns out to be survivable',
+            'someone realizes they have been punishing themselves for something that was not their fault',
+            'a feeling of belonging settles in at an unexpected moment',
+            'someone recognizes growth in themselves without having to be told',
+            'an old wound stops hurting in a way that is noticeable',
+            'someone drops a defense they have been maintaining and nothing bad happens',
+            'a moment of pride — earned, not performed — arrives quietly',
+            'someone realizes they no longer need something they used to depend on',
+        ],
+        negative: [
+            'a defense mechanism that usually works fails to protect against the current situation',
+            'someone realizes they have been avoiding a feeling by staying busy and the busyness just stopped',
+            'an emotional truth becomes impossible to ignore but equally impossible to address right now',
+            'guilt arrives for something that seemed justified at the time',
+            'someone recognizes they are repeating a pattern they swore they would not repeat',
+            'a feeling that was manageable in private becomes unbearable in the presence of others',
+            'someone discovers they are angry at a person they are not allowed to be angry at',
+            'a carefully maintained emotional composure cracks at a visible moment',
+            'an old grief is reactivated by something that should not have been able to reach it',
+            'someone realizes their motivation for something they are doing is not what they told themselves it was',
+            'a moment of envy arrives that feels ugly and cannot be easily dismissed',
+            'someone who has been strong for others reaches the point where the strength is performative',
+            'a need that was being met by the current situation is suddenly not being met and the absence is felt immediately',
+            'someone discovers they are afraid of something they did not know they were afraid of',
+            'an emotional investment that has been building is threatened by circumstances that do not care about feelings',
+        ],
+    },
+    ENVIRONMENTAL: {
+        positive: [
+            'the environment shifts in a way that naturally separates the characters from a source of pressure',
+            'a feature of the landscape provides something the characters needed without them having to search for it',
+            'the atmosphere of a place changes in a way that invites a different kind of interaction than was happening',
+            'a natural event — weather, tide, season — arrives at a time that creates opportunity',
+            'a space that was being used for one purpose turns out to serve another purpose better',
+            'something about the environment triggers a useful association or memory',
+            'the terrain provides cover, shelter, or advantage that was not obvious until it was needed',
+            'a change in the surroundings creates a natural pause in whatever was happening',
+            'the environment reveals that someone or something has been here before and left something useful behind',
+            'a boundary in the landscape — a river, a ridge, a wall — provides strategic advantage',
+            'the quality of a space improves in a way that affects the mood of everyone in it',
+            'a natural or structural feature of the environment makes a difficult thing easier',
+            'the sounds of the environment shift to something that supports concentration or calm',
+            'a previously harsh or unwelcoming environment softens as conditions change',
+            'something alive in the environment — an animal, a plant — behaves in a way that is helpful or informative',
+        ],
+        negative: [
+            'the environment shifts to make the current plan significantly harder',
+            'a feature of the landscape that was relied on proves less stable than expected',
+            'the atmosphere of a place becomes oppressive in a way that affects judgment',
+            'a natural event arrives at the worst possible time',
+            'a space that felt safe reveals a vulnerability — a weak wall, an unsecured entrance, a blind spot',
+            'something in the environment indicates that someone or something else has been here recently',
+            'the terrain becomes an active obstacle rather than a passive surface',
+            'a change in the surroundings forces a decision that was being deferred',
+            'the environment conceals something that should have been visible',
+            'a boundary in the landscape becomes a barrier rather than an advantage',
+            'the quality of a space deteriorates in a way that affects the people in it',
+            'the sounds of the environment shift to something that disrupts focus or raises alarm',
+            'a natural or structural feature of the environment makes an easy thing suddenly difficult',
+            'the environment provides false information — a path that leads nowhere, a shelter that is not safe',
+            'something in the environment begins to change faster than expected and the change is not favorable',
+        ],
+    },
+    DISCOVERY: {
+        positive: [
+            'a piece of information that has been missing arrives and the picture it completes is encouraging',
+            'someone finds evidence that a plan or effort that seemed to be failing is actually working',
+            'a hidden resource is discovered in a location that was already being used for something else',
+            'a connection is made between two pieces of information that individually seemed useless',
+            'a document, message, or record is found that changes the understanding of a past event for the better',
+            'an object is discovered whose function or value was not initially apparent',
+            'someone realizes that a rule or constraint they were working around does not actually apply',
+            'a map, diagram, or description of the current situation is found and it is more complete than what was available',
+            'evidence surfaces that an enemy or obstacle has a weakness no one knew about',
+            'something that was hidden is found because the conditions for finding it happened to align',
+            'a skill or ability that someone has turns out to have an application no one had considered',
+            'a piece of old information proves unexpectedly current',
+            'a discovery confirms a theory that was considered too optimistic',
+            'something that was broken turns out to be repairable with what is available',
+            'a discovery reveals that the situation is less advanced or less severe than feared',
+        ],
+        negative: [
+            'a piece of information arrives that makes the current plan obsolete',
+            'someone finds evidence that something they trusted has been compromised',
+            'a document, message, or record is found that changes the understanding of a past event for the worse',
+            'an object is discovered in a place it should not be, and its presence implies something troubling',
+            'a connection is made between two events that were assumed to be unrelated, and the connection is alarming',
+            'someone discovers that a rule or constraint they thought they understood has an exception they did not know about',
+            'evidence surfaces that a problem is more advanced than anyone estimated',
+            'a hidden cost of something that seemed free becomes apparent',
+            'a map or description of the situation is found and it contradicts what was believed',
+            'something that was assumed to be unique turns out to exist in other places — and that is not good',
+            'a discovery reveals that an advantage being relied on has already been accounted for by someone else',
+            'a piece of information that was being kept from someone is about to reach them through other channels',
+            'something thought to be broken turns out to have been deliberately disabled',
+            'a discovery reveals that what seemed like a setback was actually the intended outcome of someone else\'s plan',
+            'information arrives that is true but that everyone would have been better off not knowing right now',
+        ],
+    },
+    EXTERNAL: {
+        positive: [
+            'a message arrives from outside with information that changes the local calculation',
+            'an external conflict that was causing pressure pauses or redirects',
+            'someone from outside the current group arrives with skills or resources that are needed',
+            'an authority or institution makes a decision that indirectly benefits the current situation',
+            'an external event creates a distraction that pulls attention away from the characters at a useful moment',
+            'a supply, shipment, or delivery arrives that was not certain',
+            'an external deadline is extended or a constraint is loosened',
+            'a neutral external party offers assistance or shelter without conditions',
+            'an enemy\'s external support is disrupted by something unrelated to the characters',
+            'a rumor or report from elsewhere turns out to be better than the reality it described',
+            'an external force removes an obstacle without being asked',
+            'a change in external circumstances makes a previously risky plan significantly safer',
+            'someone in a position of external authority shows unexpected sympathy or flexibility',
+            'an external alliance or agreement holds when it was expected to fail',
+            'the broader situation stabilizes in a way that gives the characters room to breathe',
+        ],
+        negative: [
+            'a message arrives from outside that changes everything and there is no time to adjust',
+            'an external conflict escalates and begins to affect the local situation',
+            'someone from outside arrives and their presence complicates the existing dynamic',
+            'an authority or institution makes a decision that creates a new constraint',
+            'an external event draws the characters into something they were trying to avoid',
+            'a supply or resource that was expected from outside does not arrive',
+            'an external deadline accelerates or a constraint tightens',
+            'a neutral external party withdraws and their absence is felt',
+            'an enemy receives external support that changes the balance',
+            'a rumor or report from elsewhere turns out to be worse than the reality it described',
+            'an external force introduces a new element that no one here can control',
+            'a change in external circumstances makes a safe plan suddenly risky',
+            'someone in a position of external authority makes a hostile or indifferent decision',
+            'an external alliance or agreement fails and the fallout reaches the characters',
+            'the broader situation destabilizes in a way that removes options locally',
+        ],
+    },
+},
+
+
+// ════════════════════════════════════════════════════════════
+// TURNING POINT
+// ════════════════════════════════════════════════════════════
+
+TURNING: {
+    INTERPERSONAL: {
+        positive: [
+            'a relationship that has been defined by caution shifts to one defined by trust through a single decisive moment',
+            'someone chooses another person over their own safety and the choice is witnessed',
+            'a conflict that has been building reaches its peak and resolves through vulnerability rather than force',
+            'two people who have been on opposite sides find common ground that neither expected',
+            'someone reveals a secret they have been carrying and the other person already knew — and stayed anyway',
+            'a group dynamic shifts decisively around a moment of genuine leadership',
+            'an act of forgiveness occurs that changes what is possible going forward',
+            'someone who has been absent or distant returns and their return changes the emotional landscape',
+            'a declaration is made — of loyalty, of love, of commitment — that cannot be retracted and changes the stakes',
+            'two people survive something together and the shared survival creates a bond that did not exist before',
+            'someone proves their worth to a person whose opinion they had given up on changing',
+            'a relationship moves from transactional to genuine through a moment that was not planned',
+            'a third party acknowledges the relationship between two people in a way that gives it legitimacy or weight',
+            'someone makes a sacrifice for another person and the sacrifice is understood and honored',
+            'a pattern of miscommunication between two people breaks because one of them finally says the real thing',
+        ],
+        negative: [
+            'a betrayal occurs that both people know changes everything, even if neither says so immediately',
+            'someone is forced to choose between two people and the choice costs them the one they did not choose',
+            'a secret is revealed that retroactively poisons the trust that was built on not knowing',
+            'a relationship that has been sustaining both people reaches a point where it is sustaining neither',
+            'someone realizes they have been used and the realization is sudden and complete',
+            'a group turns on one of its members and the turning is collective rather than individual',
+            'a moment of honesty between two people reveals that they want fundamentally incompatible things',
+            'someone who was relied on as stable proves to be the source of the instability',
+            'a promise is broken under pressure and both people know the pressure is not a sufficient excuse',
+            'the power dynamic in a relationship reverses and the reversal is not comfortable for either person',
+            'someone discovers that the version of them another person loves is not who they actually are',
+            'an alliance built on shared interest collapses when the interests diverge',
+            'a moment of cruelty — deliberate or careless — damages something that was fragile and important',
+            'someone withdraws their emotional investment visibly and the withdrawal changes the room',
+            'a confrontation that has been avoided finally happens and it is worse than either person imagined',
+        ],
+    },
+    EMOTIONAL: {
+        positive: [
+            'a grief that has been carried for a long time is shared with someone and the sharing changes its weight',
+            'someone makes a decision based on what they actually want rather than what they think they should want',
+            'an emotional truth that has been circling finally lands and it brings relief rather than pain',
+            'someone stops fighting a feeling they have been resisting and the surrender is freeing',
+            'a moment of absolute clarity cuts through confusion and the clarity is about something that matters',
+            'someone discovers they are loved in a way they did not know they needed',
+            'a cycle of guilt or shame is interrupted by an external event that forces perspective',
+            'someone accepts a loss they have been refusing to grieve and the acceptance opens something new',
+            'a deeply held belief about oneself is challenged by evidence and the evidence wins',
+            'someone experiences genuine pride in another person and the pride transforms their own state',
+            'a feeling of despair gives way to anger and the anger is useful — it has direction',
+            'someone stops performing an emotion and starts feeling the real one underneath',
+            'a realization arrives that changes the meaning of past suffering — it was not pointless',
+            'someone discovers that the thing they have been running from was never as large as they imagined',
+            'an emotional wall comes down not through force but through exhaustion and what is behind it is better than expected',
+        ],
+        negative: [
+            'a hope that has been sustaining someone through difficulty is taken away by circumstances',
+            'someone discovers that the emotion they thought they felt was actually covering a darker one',
+            'a carefully maintained sense of identity cracks under pressure that was not anticipated',
+            'someone reaches the point where they can no longer separate what they feel from how they act',
+            'a numbing that has been protective wears off and everything it was blocking arrives at once',
+            'someone is confronted with a version of themselves from the past and the comparison is devastating',
+            'a fear that was manageable when theoretical becomes visceral when encountered in reality',
+            'someone realizes they have been grieving something that is not actually gone — and the grief was about something else entirely',
+            'an emotional investment pays off in a way that is technically positive but feels hollow',
+            'someone discovers they have used up a reserve of strength they assumed was deeper',
+            'a feeling of safety is shattered by something that should not have been able to reach it',
+            'someone who has been holding themselves together for others reaches the moment where they cannot',
+            'an emotion arrives that does not have a name and its namelessness makes it harder to manage',
+            'someone realizes they have been making decisions from a place of damage rather than choice',
+            'a moment that should feel good instead feels like loss and the dissonance is disorienting',
+        ],
+    },
+    ENVIRONMENTAL: {
+        positive: [
+            'the environment transforms in a way that opens possibilities that did not exist before',
+            'a place that held only negative associations reveals something that changes how it is experienced',
+            'the landscape or setting provides a dramatic natural advantage at a critical moment',
+            'a change in environment forces a change in approach and the new approach is better',
+            'a hidden feature of the location reveals itself and it changes the strategic picture completely',
+            'the weather or natural conditions shift dramatically in a way that favors the characters',
+            'a space that has been confining opens up — literally or figuratively — and the opening is significant',
+            'the environment creates a natural stage for a confrontation that needed to happen',
+            'a dangerous feature of the landscape turns out to be navigable by someone present',
+            'a place of power or significance is reached and it provides what was sought',
+            'the environment heals or restores itself in a way that mirrors or supports what is happening to the characters',
+            'a threshold is crossed and the new territory is better than what was left behind',
+            'a natural phenomenon occurs that is so striking it forces everyone to stop and the stopping is needed',
+            'the environment separates the characters from a threat more effectively than they could have done themselves',
+            'a place that was hostile becomes neutral or welcoming through a change no one controlled',
+        ],
+        negative: [
+            'the environment shifts in a way that removes the current plan as an option',
+            'a place that was safe becomes dangerous through a change that was not predicted',
+            'the landscape or setting turns against the characters at a moment of vulnerability',
+            'a feature of the environment that was relied upon fails or disappears',
+            'a natural event of significant scale forces immediate response and overrides all other priorities',
+            'the terrain becomes impassable in a direction that matters',
+            'a space that was open contracts — literally or figuratively — trapping those inside',
+            'the environment reveals that something has been changing slowly and the cumulative change is now critical',
+            'a hidden danger in the landscape activates without warning',
+            'a place that held meaning is damaged or destroyed by environmental forces',
+            'the weather or natural conditions shift dramatically against the characters',
+            'a threshold is reached where the environment itself becomes the primary threat',
+            'a natural boundary that provided protection is breached',
+            'the environment creates conditions that force a confrontation before anyone is ready',
+            'a change in the surroundings reveals how precarious the current position actually was',
+        ],
+    },
+    DISCOVERY: {
+        positive: [
+            'a major piece of the puzzle falls into place and the picture it reveals is actionable',
+            'a truth that has been suspected is confirmed and the confirmation comes with proof',
+            'a discovery reveals that an enemy has been operating under a critical misunderstanding',
+            'something that was believed lost is found and its return changes what is possible',
+            'a hidden connection between events reveals a pattern that can be exploited',
+            'a discovery proves that someone who was doubted was right all along',
+            'information arrives that transforms a defensive position into an offensive one',
+            'a discovery reveals a path forward that no one had considered because it required information that was not available until now',
+            'a record, testimony, or artifact surfaces that vindicates a controversial decision',
+            'a discovery reveals that the worst-case scenario everyone was preparing for is not actually in play',
+            'a hidden ally is discovered — someone who has been working toward the same goal from a different angle',
+            'a breakthrough in understanding occurs that makes a previously impossible problem solvable',
+            'evidence is found that the situation is more favorable than the available information suggested',
+            'a discovery provides leverage that did not previously exist',
+            'a piece of knowledge that was thought to be dangerous turns out to be protective when properly understood',
+        ],
+        negative: [
+            'a discovery reveals that the situation is fundamentally different from what everyone believed',
+            'evidence surfaces that someone trusted has been compromised — not by choice, but the result is the same',
+            'a truth that was suspected is confirmed and the confirmation is worse than the suspicion',
+            'a discovery reveals that a victory was actually a trap or a misdirection',
+            'information arrives that makes a committed plan obviously wrong but too late to change',
+            'a hidden cost is discovered that retroactively changes the value of everything gained',
+            'a discovery proves that a key assumption underpinning the current strategy was incorrect',
+            'something that was believed to be unique to this situation turns out to be part of a much larger pattern',
+            'evidence is found that the timeline is wrong — there is less time than anyone thought',
+            'a record, testimony, or artifact surfaces that contradicts the accepted version of events',
+            'a discovery reveals that what seemed like an obstacle was actually protecting something important',
+            'information arrives that turns an ally into an unknown — not an enemy, but no longer reliable',
+            'a discovery reveals that the characters have been observed for longer than they knew',
+            'something that was hidden is uncovered and the reason it was hidden turns out to have been valid',
+            'a piece of knowledge arrives that cannot be acted on without revealing how it was obtained',
+        ],
+    },
+    EXTERNAL: {
+        positive: [
+            'an external force that was threatening is redirected by events elsewhere',
+            'a major external ally commits resources that change the scale of what is possible',
+            'an external conflict resolves in a way that frees the characters from an obligation',
+            'a power structure outside the immediate situation shifts in favor of the characters',
+            'an external event validates the characters\' position to people who were skeptical',
+            'a third party brokers a solution that the involved parties could not reach on their own',
+            'an external resource arrives that was given up on — late, but still in time',
+            'an external threat overreaches and its overreach creates vulnerability',
+            'a change in the broader world creates a new option that did not exist before',
+            'an external authority reverses a decision that was causing damage',
+            'an external event creates a situation where enemies must cooperate temporarily',
+            'a piece of external infrastructure that was damaged is restored and its restoration has immediate benefits',
+            'an external force removes a figure who was causing problems without the characters having to confront them',
+            'a broader trend shifts in a direction that supports the characters\' goals',
+            'an external party that was hostile is neutralized by a completely unrelated development',
+        ],
+        negative: [
+            'an external force enters the situation with demands that override current priorities',
+            'a decision made far from here reaches the characters and it constrains their options severely',
+            'an external conflict that was distant arrives locally with little warning',
+            'a power structure outside the immediate situation shifts against the characters',
+            'an external ally withdraws support due to their own problems elsewhere',
+            'a third party intervenes and their intervention serves their interests, not the characters\'',
+            'an external event changes the rules everyone was operating under',
+            'an external threat that was being monitored accelerates beyond predictions',
+            'a broader authority makes a decision that was not aimed at the characters but affects them disproportionately',
+            'an external resource that was being counted on is redirected to a different crisis',
+            'an enemy receives external legitimacy or support that changes what they are capable of',
+            'an external deadline arrives and it is not negotiable',
+            'a change in the broader world eliminates an option the characters were keeping in reserve',
+            'an external event creates a situation where the characters must act publicly when they needed to act quietly',
+            'a force from outside the story arrives and its presence means nothing will be the same',
+        ],
+    },
+},
+
+
+// ════════════════════════════════════════════════════════════
+// MAJOR
+// ════════════════════════════════════════════════════════════
+
+MAJOR: {
+    INTERPERSONAL: {
+        positive: [
+            'a bond is tested by something that should have broken it and the bond holds',
+            'someone who has been an antagonist throughout the story chooses a different path and commits to it',
+            'a group that was fragmenting coalesces around a shared purpose that transcends individual grievances',
+            'a relationship reaches a depth where both people understand each other without the need for explanation',
+            'someone makes a public commitment to another person that changes their standing with everyone else',
+            'a rift between two people that defined the story resolves through mutual recognition of fault',
+            'a sacrifice is made for another person and the person it was made for witnesses it and is changed by it',
+            'an alliance forms between unlikely people and the alliance is genuine rather than strategic',
+            'a person who has been isolated is fully accepted into a group and the acceptance is unconditional',
+            'someone proves their loyalty in a way that costs them everything they had to lose',
+            'a leader earns the trust of those who follow through action rather than authority',
+            'a confession of something deeply hidden is met with the one response the confessor needed',
+            'two people whose relationship has been marked by pain find a way to be in each other\'s lives without pain',
+            'a betrayal is forgiven and the forgiveness transforms both the betrayer and the betrayed',
+            'a group achieves something none of them could have achieved alone and the achievement bonds them permanently',
+        ],
+        negative: [
+            'a betrayal occurs at the deepest level — the person most trusted is the source',
+            'a relationship that was the foundation of someone\'s stability collapses completely',
+            'a group turns against its leader and the turning is justified but devastating',
+            'someone is abandoned by the last person they believed would stay',
+            'a truth about a relationship is exposed that makes it impossible to continue as before',
+            'a choice between two loyalties forces a visible, permanent fracture',
+            'someone\'s attempt to protect another person is the thing that causes the most damage',
+            'a pattern of harm within a relationship is finally named and naming it does not fix it',
+            'an act of desperation damages a relationship beyond what the desperation justified',
+            'the person someone has been fighting for gives up before they do',
+            'a public humiliation or exposure damages multiple relationships simultaneously',
+            'someone who was the heart of a group is removed and the group cannot compensate',
+            'a lie that has sustained a relationship is exposed and the truth is not survivable',
+            'two people who were essential to each other become harmful to each other',
+            'a group\'s internal conflict becomes more destructive than the external threat they face',
+        ],
+    },
+    EMOTIONAL: {
+        positive: [
+            'a fundamental fear is confronted and although the confrontation is painful it results in freedom',
+            'someone allows themselves to feel something they have been preventing for the entire story and it does not destroy them',
+            'a crisis of identity resolves through acceptance rather than victory',
+            'an emotional wall that has defined a character comes down and what is behind it is not the weakness they feared',
+            'someone discovers that the strength they thought came from suppression actually comes from feeling',
+            'a moment of emotional honesty between two people changes the trajectory of the story',
+            'someone who has been defined by loss discovers they are also defined by what they still have',
+            'a breakdown occurs and the rebuilding that follows produces something stronger than what was there before',
+            'a choice is made from love rather than fear and the outcome reflects the difference',
+            'someone makes peace with an aspect of themselves they have been at war with',
+            'an emotional burden that has been carried alone is shared and the sharing is transformative',
+            'a moment of pure, uncomplicated happiness arrives and is recognized as significant',
+            'someone discovers they have the capacity for forgiveness they did not believe they possessed',
+            'an emotional risk pays off — not in a practical way, but in a way that matters more',
+            'someone stops trying to be what they think they should be and becomes what they are',
+        ],
+        negative: [
+            'a fundamental belief about oneself is shattered by an event that cannot be rationalized',
+            'someone reaches a point of emotional damage where recovery is uncertain',
+            'a feeling of rage takes over a person who has always prided themselves on control',
+            'someone discovers that the thing they built their emotional life around was a defense mechanism not a truth',
+            'a grief compounds with other grief until the total is unbearable',
+            'someone makes a decision from a place of pain and the decision has permanent consequences',
+            'an emotional dependency is suddenly removed and the withdrawal is severe',
+            'someone is confronted with the full weight of what they have done and the weight is crushing',
+            'a hope that has sustained someone is not just disappointed but proven to have been delusional',
+            'someone realizes they have crossed a line they cannot uncross emotionally',
+            'a feeling of emptiness arrives that is different from sadness — it is the absence of the ability to feel',
+            'someone breaks a promise to themselves and the breaking feels final',
+            'an emotion that was being held at bay breaks through all defenses simultaneously',
+            'someone discovers they are capable of something they believed only bad people were capable of',
+            'a moment of emotional clarity arrives and what it reveals is that the situation is exactly as bad as it looks',
+        ],
+    },
+    ENVIRONMENTAL: {
+        positive: [
+            'the environment undergoes a dramatic transformation that signals a genuine change in the situation',
+            'a place of significance is reached after a long journey and it delivers what was promised',
+            'a catastrophic environmental event is survived and the survival changes everything',
+            'the environment provides a dramatic natural intervention at a critical moment',
+            'a place that has been hostile for the entire story becomes passable or safe',
+            'a hidden location is revealed that changes the strategic landscape entirely',
+            'the environment responds to the characters\' actions in a way that suggests alignment or approval',
+            'a natural boundary that was an obstacle becomes an advantage when the situation changes',
+            'a place of healing or restoration is found and it works as needed',
+            'the environment isolates the characters from a threat so completely that the threat cannot follow',
+            'a landmark or natural feature serves as a turning point — once past it, the rules change',
+            'a devastating environmental condition lifts and the relief is tangible',
+            'a place that was thought to be empty or dead shows signs of life or recovery',
+            'the environment creates conditions for a last stand that actually favors the defenders',
+            'a natural phenomenon of immense scale occurs and its effect on the situation is beneficial',
+        ],
+        negative: [
+            'the environment undergoes a change that is clearly irreversible and the implications are severe',
+            'a place of safety is destroyed or fundamentally compromised',
+            'a catastrophic environmental event forces abandonment of the current position',
+            'the environment becomes hostile in a way that is not manageable with available resources',
+            'a hidden environmental danger reaches a tipping point with no warning',
+            'the landscape transforms in a way that cuts off retreat or escape',
+            'a place of significance is reached and it is not what was expected — it is worse',
+            'the environment destroys something that cannot be replaced',
+            'a natural disaster or catastrophe forces impossible choices about who or what to save',
+            'the environment reveals the scale of a problem that was being perceived locally',
+            'a place that was being defended becomes impossible to hold',
+            'a landmark or natural feature that provided orientation or meaning is gone',
+            'the environment turns lethal in a way that does not distinguish between friend and enemy',
+            'a contamination or corruption of the environment reaches the characters\' location',
+            'a natural phenomenon of immense scale occurs and there is nothing to do but endure it',
+        ],
+    },
+    DISCOVERY: {
+        positive: [
+            'a revelation arrives that changes the meaning of everything that has happened — and the new meaning is better',
+            'a discovery proves that a sacrifice made earlier accomplished what it was meant to accomplish',
+            'a hidden truth is uncovered that gives the characters leverage they did not know they had',
+            'a mystery that has driven the story resolves in a way that is satisfying and actionable',
+            'a discovery reveals that an enemy is not what they appeared to be — and the reality is less threatening',
+            'a piece of knowledge that was lost is recovered and its recovery changes the rules',
+            'evidence surfaces that vindicates a decision everyone else condemned',
+            'a discovery reveals a way out of a situation that appeared to have no exit',
+            'a truth that was hidden for protection is revealed and the protection is no longer needed',
+            'a discovery links the characters to something larger than they knew — and the connection is empowering',
+            'a breakthrough in understanding makes clear what needs to be done next',
+            'a discovery proves that an enemy\'s greatest strength is also their greatest vulnerability',
+            'something that was believed to be impossible is proven to be merely very difficult',
+            'a record of the past is found that provides moral authority for the present',
+            'a discovery reveals that the characters have been closer to their goal than they realized',
+        ],
+        negative: [
+            'a revelation arrives that changes the meaning of everything — and the new meaning is devastating',
+            'a discovery proves that a belief everyone held was wrong, and the decisions made based on it were therefore wrong',
+            'evidence surfaces that the real threat has been something entirely different from what everyone was fighting',
+            'a truth is uncovered that turns a hero of the story into something far more complicated',
+            'a discovery reveals the full scope of a problem that was being addressed as though it were smaller',
+            'information arrives that makes clear a choice must be made between two things that both matter',
+            'a mystery resolves and the resolution makes things harder, not easier',
+            'a discovery reveals that an advantage being relied on was an illusion',
+            'evidence surfaces that the characters\' actions have been causing harm they were not aware of',
+            'a hidden truth is uncovered and the reason it was hidden was that knowing it makes everything more dangerous',
+            'a breakthrough in understanding arrives too late to prevent what it would have prevented',
+            'a discovery links the characters to something larger — and the connection is threatening',
+            'a record of the past is found that undermines the legitimacy of what is being done in the present',
+            'a discovery reveals that an ally has been working with incomplete or incorrect information',
+            'a truth arrives that nobody is ready for and there is no time to become ready',
+        ],
+    },
+    EXTERNAL: {
+        positive: [
+            'a major external intervention reshapes the situation in favor of the characters',
+            'an external power that was hostile is overthrown or neutralized by forces unrelated to the characters',
+            'a crisis elsewhere resolves and frees resources or allies for the current situation',
+            'an external event creates a once-in-a-lifetime opportunity that must be acted on immediately',
+            'a powerful external figure chooses to support the characters publicly and the support is decisive',
+            'an institution or system that was broken begins to function again at the right moment',
+            'an external force eliminates a threat the characters could not have handled themselves',
+            'a broader conflict shifts in a direction that makes the characters\' goals achievable',
+            'an external event proves the characters right in the eyes of people who matter',
+            'a call for help sent long ago is answered with more than was asked for',
+            'an external event forces enemies to cooperate and the cooperation reveals common ground',
+            'a political or social shift outside the story creates new possibilities within it',
+            'an external witness provides testimony or evidence that changes the balance of power',
+            'a resource from the outside world arrives that was believed to no longer exist',
+            'an external event creates a new normal that is more favorable than the old one',
+        ],
+        negative: [
+            'an external force intervenes and its intervention serves no one\'s interests but its own',
+            'a war, disaster, or upheaval from elsewhere reaches the characters\' situation',
+            'an external power makes a decision that strips the characters of options they were counting on',
+            'a crisis elsewhere demands the withdrawal of support or resources from the current situation',
+            'a powerful external figure publicly opposes the characters and the opposition has teeth',
+            'an institution or system that was functioning collapses and its collapse has immediate consequences',
+            'a broader conflict escalates to a point where the characters\' concerns become irrelevant to everyone else',
+            'an external deadline arrives that cannot be negotiated and changes what must happen next',
+            'an external event delegitimizes the characters\' position in the eyes of people who matter',
+            'a political or social shift creates conditions that are hostile to the characters\' goals',
+            'an enemy receives external validation or support that makes them significantly more dangerous',
+            'a force from outside the story arrives and nothing that was planned accounts for it',
+            'an external event creates a new normal that is significantly worse than the old one',
+            'an external authority claims jurisdiction over the characters\' situation and their priorities are different',
+            'the world outside stops caring about what is happening here and the indifference has consequences',
+        ],
+    },
+},
+
+
+// ════════════════════════════════════════════════════════════
+// WORLD-SHAKING
+// ════════════════════════════════════════════════════════════
+
+WORLDSHAKING: {
+    INTERPERSONAL: {
+        positive: [
+            'a bond between two people reaches a depth that fundamentally changes what they are willing to do for each other',
+            'a long-buried truth between two people finally surfaces and instead of destroying them it sets them free',
+            'someone who has been an enemy for the entire story chooses the other side — and means it',
+            'a relationship that everyone assumed was broken beyond repair reconstitutes around something no one expected',
+            'two people whose conflict has defined the story reach an understanding that makes the conflict irrelevant',
+            'a betrayal is revealed to have been protection all along and the cost of that protection becomes visible',
+            'someone sacrifices their position, safety, or future for another person without hesitation or conditions',
+            'a person everyone underestimated becomes the one whose loyalty holds everything together',
+            'a declaration — of love, of allegiance, of truth — is made publicly and cannot be taken back and it changes everything',
+            'someone forgives something that was considered unforgivable and the forgiveness is genuine',
+            'two people who were never supposed to meet discover a connection that recontextualizes both their histories',
+            'a promise made long ago is fulfilled under circumstances that make it mean far more than when it was given',
+            'someone chooses a person over a principle they have held their entire life',
+            'a group fractures and the way it reassembles reveals who truly matters to whom',
+            'a relationship reaches a turning point where both people see each other completely and choose to stay',
+        ],
+        negative: [
+            'a betrayal is revealed that has been running so long it has shaped the entire relationship',
+            'someone trusted completely turns out to have had a separate agenda from the very beginning',
+            'a bond that was the emotional foundation of the story breaks under a weight it cannot carry',
+            'a person is forced to choose between two people they love and the choice destroys one of those relationships permanently',
+            'a lie told to protect someone is exposed and the person it was meant to protect is the one most damaged',
+            'someone who has been loyal for the entire story reaches their limit and walks away',
+            'a public exposure of a private relationship destroys both people\'s positions',
+            'a sacrifice made for someone is rejected and the rejection cannot be undone',
+            'someone discovers they have been a tool in another person\'s plan — and the plan is not over',
+            'a relationship that seemed like the safest thing in the story becomes the most dangerous',
+            'two people who defined themselves through each other are forced apart by something neither can fight',
+            'a confession comes too late and the person it was meant for has already made an irreversible decision',
+            'a group\'s loyalty to one person collapses simultaneously leaving them completely alone',
+            'someone\'s love or devotion is used as a weapon against them by the person they trusted most',
+            'a connection between two people is revealed to have been engineered by a third party for their own purposes',
+        ],
+    },
+    EMOTIONAL: {
+        positive: [
+            'a grief that has defined someone for the entire story finally begins to release its hold',
+            'someone who has been performing strength finally allows themselves to break down and discovers they are held',
+            'an identity crisis that has been building resolves in a way that makes the person more whole than before',
+            'a fear that has controlled someone\'s decisions for the entire arc is faced and does not destroy them',
+            'someone discovers that the thing they hated most about themselves is the thing that saves them',
+            'a moment of complete emotional honesty changes the trajectory of everything around it',
+            'someone who has been numb for a long time feels something real again and it is not pain',
+            'a cycle of self-destruction that seemed permanent is broken by a single moment of genuine connection',
+            'a memory that has been a source of pain is recontextualized and becomes a source of strength',
+            'someone forgives themselves for something they believed was unforgivable',
+            'an emotion that has been suppressed for the entire story surfaces and it turns out to be the right one',
+            'a person who has defined themselves by their damage discovers they are not only their damage',
+            'a moment of joy arrives in the middle of catastrophe and it is not false — it is the most real thing in the scene',
+            'someone\'s vulnerability shown at the worst possible moment turns out to be exactly what was needed',
+            'a burden carried alone for the entire story is finally shared and the sharing makes it bearable',
+        ],
+        negative: [
+            'a hope that has sustained someone through everything is proven to have been false',
+            'someone reaches a point of emotional exhaustion where they can no longer feel what they need to feel',
+            'a truth about themselves that someone has avoided for the entire story becomes undeniable',
+            'a grief arrives that is larger than anything the person has the capacity to process',
+            'someone discovers that the version of themselves they have been fighting to protect never existed',
+            'an emotional dependency that seemed like love is revealed to have been something else entirely',
+            'a moment of complete emotional honesty destroys something that needed the lie to survive',
+            'someone realizes they have become the thing they defined themselves against',
+            'a cycle of behavior repeats at the worst moment proving that the change everyone believed in was not real',
+            'a feeling that has been building for the entire story finally arrives and it is worse than anticipated',
+            'someone\'s emotional armor finally fails and what comes through is not sadness but rage',
+            'a memory that was a source of comfort is revealed to have been inaccurate and the real version is devastating',
+            'a person reaches the point where they stop caring about something that previously defined them',
+            'someone\'s attempt to protect their own emotional survival causes irreparable harm to someone else',
+            'an emotion that was supposed to be resolved returns with accumulated force and is no longer manageable',
+        ],
+    },
+    ENVIRONMENTAL: {
+        positive: [
+            'a place that has been hostile for the entire story transforms — the danger lifts and what remains is something new',
+            'a natural or supernatural phenomenon occurs that fundamentally alters the landscape of what is possible',
+            'a safe place that was lost is recovered and returning to it changes the meaning of everything that happened since',
+            'the environment itself responds to what is happening as if it recognizes the significance',
+            'a barrier that has defined the world — a wall, a border, a divide — ceases to exist',
+            'a catastrophe that seemed inevitable is averted by something the environment provides at the last moment',
+            'a place of power activates in a way that benefits everyone present regardless of allegiance',
+            'the world reveals a hidden layer that changes what the characters understand about where they are',
+            'a corruption or blight that has been spreading is reversed at its source',
+            'a place that was believed to be destroyed turns out to have survived in a form no one expected',
+            'the environment shifts to make something that was impossible suddenly achievable',
+            'a cycle of destruction in a specific place breaks and what replaces it is something no one anticipated',
+            'a threshold is crossed and what is on the other side changes everything',
+            'a place that held trauma is reclaimed and the reclaiming has power',
+            'the world itself seems to exhale — a pressure that has been building in the environment releases',
+        ],
+        negative: [
+            'a safe place is permanently compromised — what made it safe is gone and will not return',
+            'a catastrophe reshapes the physical world in a way that cannot be undone',
+            'a corruption or blight reaches a critical mass and begins to transform the environment irreversibly',
+            'a place of power turns hostile to everyone within it simultaneously',
+            'the environment becomes actively dangerous in a way that changes all existing plans',
+            'a barrier that was protecting something fails and what it was holding back enters the world',
+            'a place that held meaning is destroyed and the destruction is felt by everyone connected to it',
+            'the world reveals something that was hidden beneath it and that something is not benign',
+            'a threshold is crossed and there is no way back — the path behind ceases to exist',
+            'the environment begins to behave in ways that suggest something is fundamentally wrong at a level deeper than surface',
+            'a resource the world depended on is exhausted or poisoned',
+            'a place of safety becomes a trap — the same qualities that made it protective now make it a prison',
+            'a cycle of destruction accelerates beyond anyone\'s ability to intervene',
+            'the physical world begins to reflect the emotional or spiritual damage of what has happened and the reflection makes things worse',
+            'a change in the environment forces everyone to abandon something they cannot take with them',
+        ],
+    },
+    DISCOVERY: {
+        positive: [
+            'a truth is uncovered that recontextualizes the entire story up to this point — and the new context is better',
+            'a long-sought answer is finally found and it is not what anyone expected but it is what was needed',
+            'a hidden ally is discovered — someone or something has been working in the background the entire time',
+            'a piece of knowledge that was considered lost forever resurfaces and it changes what is possible',
+            'a discovery reveals that a sacrifice previously thought wasted actually accomplished exactly what it was meant to',
+            'something everyone believed was a weakness turns out to be the key to everything',
+            'a pattern becomes visible that connects events no one realized were related — and the pattern is protective',
+            'a secret that has been carried as a burden is shared and turns out to be a gift',
+            'a mystery that has haunted the story resolves in a way that brings peace rather than more questions',
+            'a discovery proves that someone who was condemned was actually innocent — and the proof is undeniable',
+            'a lie that has been the foundation of something important is exposed and what replaces it is stronger',
+            'something thought to be unique and irreplaceable turns out to exist in another form',
+            'a discovery changes the rules of what is possible in this world',
+            'a hidden message or legacy left by someone long gone arrives at exactly the right moment',
+            'a truth that everyone was afraid to face turns out to be survivable — difficult, but survivable',
+        ],
+        negative: [
+            'a truth is uncovered that recontextualizes the entire story — and everything that felt like progress was actually serving something else',
+            'a discovery reveals that a trusted foundation — a belief, an institution, a history — was built on something false',
+            'a secret kept by multiple people is exposed simultaneously and none of them knew the others were keeping it',
+            'a piece of knowledge surfaces that should not exist and the fact that it exists means something terrible',
+            'a discovery proves that someone who was celebrated was actually responsible for something unforgivable',
+            'a pattern becomes visible connecting events no one realized were related — and the pattern is predatory',
+            'a mystery resolves and the answer is worse than not knowing',
+            'a hidden truth about someone\'s origin or nature or purpose is revealed and it changes how everyone sees them',
+            'a discovery renders a previous sacrifice meaningless — the sacrifice was for nothing',
+            'something thought to be benign or neutral is discovered to have been actively harmful the entire time',
+            'a lie is exposed and the structure it was supporting collapses — and people were living inside that structure',
+            'a discovery changes the rules of what is possible in this world and the change is terrifying',
+            'a hidden cost of something that seemed free becomes visible all at once',
+            'a truth arrives that cannot be unknown and every relationship it touches is damaged by it',
+            'a discovery reveals that the real threat was never what everyone thought — it was something much closer',
+        ],
+    },
+    EXTERNAL: {
+        positive: [
+            'a force from outside the story intervenes in a way that resets the stakes entirely',
+            'an external threat that has been looming for the entire arc is neutralized by something no one saw coming',
+            'an authority or power structure that was an obstacle collapses and what replaces it is an opportunity',
+            'a messenger or signal arrives from outside with information that changes everything',
+            'a resource or reinforcement arrives from a source no one thought to ask',
+            'an enemy\'s external support structure fails and they are suddenly vulnerable',
+            'a conflict larger than the current story resolves in a way that creates space for the characters',
+            'something that was approaching — a deadline, a threat, a force — stops or reverses',
+            'an external witness validates the characters\' version of events when no one else would',
+            'a power that has been neutral for the entire story commits to a side and it is this one',
+            'an event elsewhere triggers a chain reaction that reaches the characters as an unexpected advantage',
+            'an external force removes a person or obstacle that was considered immovable',
+            'a call for help that was sent long ago is finally answered',
+            'the outside world learns what has been happening here and the response is support rather than judgment',
+            'an institution or system that was corrupt or broken begins to reform in a way that directly helps',
+        ],
+        negative: [
+            'a force from outside the story arrives and it is larger than anything the characters have faced',
+            'an external threat that was theoretical becomes real and immediate with no warning',
+            'an authority or power structure that was an obstacle is replaced by something worse',
+            'a deadline that seemed distant arrives early',
+            'a conflict larger than the current story spills over and engulfs the characters',
+            'an enemy receives external reinforcement that changes the balance entirely',
+            'a power that has been neutral commits to a side and it is not this one',
+            'a call for help is answered and the answer is no',
+            'the outside world learns what has been happening and the response is hostile',
+            'an event elsewhere triggers a chain reaction that reaches the characters as catastrophe',
+            'an institution or system the characters depended on is dismantled by external forces',
+            'a force that was approaching arrives and it is worse than anticipated',
+            'an external force removes a person or protection that was considered permanent',
+            'something the characters did draws the attention of something that should never have noticed them',
+            'the outside world closes off the last exit — whatever happens now, happens here',
+        ],
+    },
+},
+
+}; // end EVENTS
+
+
+// ── Setting labels (built-in settings removed, keeping infrastructure) ─
+
+const SETTING_LABELS = {
+    none: null,
 };
-
-// ── Setting-specific event pools ───────────────────────────
-
-const SETTING_EVENTS = {
-    slavic: {
-        SUBTLE: {
-            positive: [
-                'the mist thickens in a way that feels deliberate rather than natural',
-                'an animal behaves as if it perceives something others cannot',
-                'something left as an offering disappears without explanation',
-                'a faint sound — like a name being called — comes from the wrong direction',
-                'the fire or flame changes color briefly without reason',
-                'a plant or tree in the area seems subtly wrong — too still, too aware',
-                'a familiar path looks different than it should',
-                'someone\'s amulet or charm feels warm to the touch without cause',
-                'a dream from the previous night suddenly feels relevant to what is happening now',
-                'the wind shifts in a way that seems responsive to what was just said',
-                'a stranger passing through knows something they should not know',
-                'an old scar or wound aches without physical reason',
-                'a reflection shows something that is not quite right',
-                'a bird or animal delivers what feels like a deliberate warning',
-                'the boundary between two places feels thinner than usual',
-            ],
-            negative: [
-                'something protective — an amulet, a threshold charm — is found broken or missing',
-                'a name is called from outside, in a familiar voice, but no one is there',
-                'an animal refuses to enter a space it has never had trouble with before',
-                'the fire goes out at a symbolically bad moment',
-                'a reflection shows something slightly wrong',
-                'an offering left earlier has been moved or scattered, not simply taken',
-                'a path through familiar territory becomes briefly unrecognizable',
-                'someone refers to a person who is not present as though they are watching',
-                'a smell — earth, decay, river water — appears where it does not belong',
-                'a child or animal stares at something in an empty space',
-                'something said aloud feels immediately like a mistake, though no one reacts',
-                'a boundary marker — fence post, stone, carved wood — is found displaced',
-                'the usual sounds of night or forest are conspicuously absent',
-                'a candle or lamp cannot be lit no matter the conditions',
-                'a wound or illness appears or worsens for no visible cause',
-            ],
-        },
-        MINOR: {
-            positive: [
-                'someone with knowledge of the old ways offers help without being asked',
-                'the forest or water seems to clear a path rather than obstruct',
-                'an old pact or agreement with a local spirit holds when it might not have',
-                'a spirit\'s interference accidentally benefits those present',
-                'something that should have been dangerous passes without incident, as if redirected',
-                'the right herb, object, or material appears where it is needed',
-                'someone remembers a piece of old knowledge at exactly the right moment',
-                'an entity that could have been hostile chooses to observe instead',
-                'a liminal space — crossroads, riverbank, forest edge — provides unexpected shelter',
-                'a harmful working or curse directed at someone deflects without clear reason',
-                'an old burial or sacred site nearby exerts a calming effect on something agitated',
-                'a person long thought gone or dead sends some form of signal',
-                'a creature of the forest intervenes between two parties',
-                'the right words come to someone who has no training in speaking them',
-                'something thought to be sealed or closed opens on its own',
-            ],
-            negative: [
-                'a protective boundary — salt line, threshold charm, carved post — is found violated',
-                'something with unclean history attached to a place begins to make itself felt',
-                'a local spirit\'s displeasure manifests in a way that cannot be ignored',
-                'someone performs a small ritual incorrectly and the effect is the opposite of intended',
-                'a bargain or old agreement is called in at the worst possible time',
-                'an entity begins to follow without revealing itself',
-                'a site of unclean death nearby grows more active than usual',
-                'the wrong name is spoken aloud at the wrong moment',
-                'an offering is refused — returned, scattered, or burned — which is a serious sign',
-                'something from Nav bleeds into Yav in a way that is visible to more than one person',
-                'a person begins to behave in ways that suggest outside influence',
-                'a working intended for one target appears to affect someone else instead',
-                'what seemed like a safe path proves to pass through claimed territory',
-                'a summoning or ritual begins before anyone intends it to',
-                'an object of significance is found in a place it should not be, with no explanation',
-            ],
-        },
-        MAJOR: {
-            positive: [
-                'a molfar or powerful practitioner intervenes from outside the immediate situation',
-                'an ancestor makes their presence unambiguously known in a protective capacity',
-                'a debt owed to someone by a spirit is called in at a critical moment',
-                'a long-dormant sacred site activates in a way that serves those present',
-                'a spirit of significant power chooses alliance over neutrality',
-                'an unclean dead finds resolution and removes itself as a threat',
-                'a curse breaks ahead of its natural end due to something someone did without knowing',
-                'an entity that has been hostile reveals the condition under which it will not be',
-                'the boundary closes at exactly the right moment',
-                'a ritual performed imperfectly still holds because someone\'s sincerity compensates',
-                'a dangerous working rebounds on its originator',
-                'something protected by a powerful spirit turns out to be within reach',
-                'a figure from the old stories turns out to be present and not entirely opposed',
-                'nature itself shifts in a way that changes the balance of a dangerous situation',
-                'a sacrifice made earlier — willing or not — pays off in a way no one expected',
-            ],
-            negative: [
-                'something sealed for a long time breaks open and what is inside is not what was expected',
-                'an entity of significant power decides the current situation is its business',
-                'a molfar or practitioner with opposing interests makes themselves known',
-                'a curse that was thought finished resurfaces with accumulated force',
-                'something from Nav crosses fully into Yav and is not going back easily',
-                'the dead begin to gather around a specific person or place in visible numbers',
-                'a working of protection is turned against the people it was meant to protect',
-                'an old agreement between a place and something inhuman expires and the terms change',
-                'someone\'s true name is known by something that should not know it',
-                'a ritual spirals past the point where it can be stopped by those who started it',
-                'something thought to be a minor spirit reveals a much greater depth',
-                'the boundary between two people and Nav becomes dangerously permeable',
-                'a location where many died unclean deaths reaches a threshold of accumulated energy',
-                'a protective figure — human or otherwise — is removed from the situation',
-                'something that has been watching for a long time decides to act',
-            ],
-        },
-    },
-
-    omegaverse: {
-        SUBTLE: {
-            positive: [
-                'a scent from someone nearby registers in a way that is distracting but not unwelcome',
-                'the dynamic between two people shifts almost imperceptibly but both notice',
-                'a social situation resolves in someone\'s favor due to instinct rather than strategy',
-                'someone\'s instinctive read of a room proves more accurate than anyone\'s rational assessment',
-                'an unexpected moment of physical proximity creates more ease than tension',
-                'a suppressed instinct surfaces briefly and turns out to be correct',
-                'the pack or group dynamic shifts in a way that benefits someone who needed it',
-                'a mark or bond connection provides information at a useful moment',
-                'someone\'s status in a room changes based on something no one can articulate',
-                'an instinctive protective response comes from an unexpected source',
-                'a brief contact — unintentional — resets a dynamic that had been stuck',
-                'someone reads the room through instinct and makes the right call',
-                'a social obligation attached to biology is fulfilled in a way that also benefits the situation',
-                'the hierarchy of a group quietly reorganizes around a natural shift',
-                'two people reach an understanding without words, through something closer to instinct',
-            ],
-            negative: [
-                'a scent or biological signal gives away something that was meant to stay private',
-                'instinct overrides reason at an inconvenient moment',
-                'the hierarchy of a group shifts in a way that disadvantages someone without warning',
-                'a bond connection pulls attention at the worst possible moment',
-                'someone\'s status in a room changes in a way that no one acknowledges but everyone feels',
-                'a biological response surfaces that contradicts what someone has been presenting',
-                'the pack dynamic absorbs a new tension without resolving it',
-                'a suppressed instinct surfaces as irritability or aggression instead of clarity',
-                'someone\'s read on another person is thrown off by chemistry rather than character',
-                'an unintended signal is sent and correctly interpreted by the wrong person',
-                'a physical response to proximity makes clear thinking difficult',
-                'a social obligation tied to biology is called in unexpectedly',
-                'two people\'s dynamic destabilizes around something neither of them chose',
-                'a status assumption proves to have been wrong, and the correction is inconvenient',
-                'an involuntary response to someone reveals more than intended',
-            ],
-        },
-        MINOR: {
-            positive: [
-                'a bond that has been strained stabilizes around a shared external pressure',
-                'someone\'s instinctive loyalty to another proves to be the deciding factor',
-                'a biological pull between two people creates an opening that strategy could not',
-                'a pack or group closes ranks in a way that excludes a threat',
-                'an instinctive read on someone\'s true intentions proves accurate',
-                'a heat or rut cycle, inconvenient in timing, also removes someone from danger',
-                'a bond connection provides genuine comfort or stabilization at a crisis point',
-                'a status dynamic shifts in a way that gives someone unexpected authority',
-                'two people\'s chemistry short-circuits a conflict that was about to escalate',
-                'someone\'s protective instinct activates before they consciously register the threat',
-                'a rejected bond resurfaces and turns out to have left something protective behind',
-                'an outsider\'s instinctive deference to the group\'s structure resolves a standoff',
-                'the correct instinctive response surfaces before reason has time to complicate it',
-                'a dynamic between two people stabilizes around genuine trust rather than hierarchy',
-                'a biological signal confirms what someone wanted to believe but couldn\'t verify',
-            ],
-            negative: [
-                'a heat or rut cycle begins at the worst narrative moment',
-                'a bond connection between two people begins to develop without either intending it',
-                'the pack dynamic fractures around a status challenge no one initiated',
-                'someone\'s instinctive response to another is at odds with what the situation requires',
-                'a biological signal is misread and causes a significant misunderstanding',
-                'two people\'s chemistry becomes a problem for everyone around them',
-                'a status assumption made early on turns out to have been backwards',
-                'a suppressant or blocker fails at a critical moment',
-                'an instinctive territorial response complicates a situation that required diplomacy',
-                'a bond that was thought severed turns out to have left a residual connection',
-                'someone\'s protective instinct is triggered in the wrong direction',
-                'a dynamic between two people destabilizes a larger group around them',
-                'a biological vulnerability is exposed to someone who was not supposed to know about it',
-                'a pack or group\'s internal hierarchy becomes relevant when everyone needed to be equal',
-                'an instinctive submission or dominance response happens publicly and cannot be taken back',
-            ],
-        },
-        MAJOR: {
-            positive: [
-                'a bond completes or deepens at a moment that changes the stakes entirely',
-                'a pack or group achieves genuine cohesion around a shared crisis',
-                'someone\'s biological status turns out to be the key to a situation that seemed closed',
-                'an instinct that has been suppressed for the entire story finally surfaces and it is right',
-                'a rejected or severed bond resolves in a way that is better than the original',
-                'two people whose chemistry has been complicated reach a point of genuine clarity',
-                'the pack dynamic reorganizes around the person who should have been leading all along',
-                'a biological response that seemed like a vulnerability turns out to be an advantage',
-                'a bond connection provides information or warning that changes the outcome',
-                'a crisis forces two people past the point of managing their dynamic into something real',
-                'someone\'s status shift changes the power balance in a situation at a standstill',
-                'an instinctive alliance forms between two people who had no reason to trust each other',
-                'a biological truth someone has been hiding turns out to be protective rather than dangerous',
-                'the group\'s instinctive loyalty to one person holds when it was expected to fracture',
-                'an act of genuine care within a bond dynamic shifts the entire situation',
-            ],
-            negative: [
-                'a bond breaks or is severed under circumstances that have lasting consequences for both',
-                'a status challenge within the group escalates past the point of easy resolution',
-                'a heat or rut cycle at the worst possible moment forces a major decision',
-                'two people\'s bond becomes a liability that others can and do exploit',
-                'a pack fractures around a biological conflict that no one has the vocabulary to resolve',
-                'someone\'s true dynamic is revealed publicly in a way that cannot be managed',
-                'a biological vulnerability is deliberately used as leverage',
-                'the instinctive hierarchy of the group selects the wrong leader at the worst moment',
-                'a bond that was supposed to be stable destabilizes everything around it',
-                'someone\'s suppression of their biology reaches a breaking point with consequences',
-                'a status shift removes someone from the position where they were most needed',
-                'two people\'s unresolved dynamic forces a confrontation the situation cannot absorb',
-                'an outsider\'s read on the group\'s biological dynamics is accurate and they use it',
-                'a protective instinct misfires and causes harm to the person it was meant to protect',
-                'the cost of a bond — or its absence — becomes undeniable at the worst possible time',
-            ],
-        },
-    },
-
-    isekai: {
-        SUBTLE: {
-            positive: [
-                'a local custom or piece of world knowledge turns out to be unexpectedly useful',
-                'someone\'s origin — their otherness in this world — is read as something auspicious',
-                'a piece of knowledge from another context applies perfectly to a situation here',
-                'the environment provides something that would not exist anywhere else',
-                'a small magic or supernatural element of the world resolves a mundane problem',
-                'a local figure treats an outsider with more warmth than the situation seemed to call for',
-                'a skill or habit from before carries over in a way that creates a real advantage',
-                'an element of the world that seemed like flavor turns out to matter',
-                'a class, ability, or status that seemed minor turns out to be exactly what is needed',
-                'the world itself seems to nudge something toward a better outcome',
-                'a language or communication barrier resolves in an unexpected way',
-                'two things from very different parts of this world connect in a useful way',
-                'a local legend or myth turns out to describe the current situation with uncomfortable accuracy',
-                'an NPC or minor character turns out to have significant resources or knowledge',
-                'something that seemed like a liability in this world reveals an advantage',
-            ],
-            negative: [
-                'a custom or rule of this world that no one explained creates a costly mistake',
-                'someone\'s outsider status registers as suspicious rather than interesting',
-                'a piece of assumed knowledge turns out to work differently here than expected',
-                'a local element of the world complicates something that would have been simple elsewhere',
-                'a skill that worked before fails in this context',
-                'the gap in knowledge about how this world works becomes visible at a bad moment',
-                'a class, ability, or title carries an obligation no one mentioned',
-                'a local figure\'s warmth turns out to have been conditional on something not yet known',
-                'a language or cultural gap causes a misread that has consequences',
-                'something that felt like a safe assumption about this world proves to be wrong',
-                'an element of the world that seemed minor turns out to be load-bearing',
-                'a local legend or myth seems to apply to the current situation in an ominous direction',
-                'a favor given freely in this world carries a weight that is only now becoming clear',
-                'the world\'s rules interact with someone\'s abilities in an unexpected and unhelpful way',
-                'what seemed like flavor or background turns out to be an active element with its own agenda',
-            ],
-        },
-        MINOR: {
-            positive: [
-                'a title, reputation, or status acquired in this world opens a door that would have been closed',
-                'an ability or class trait reveals a dimension that had not been used yet',
-                'an NPC with a connection to the protagonist\'s reputation steps in at a useful moment',
-                'a piece of world lore that seemed academic turns out to describe a current threat accurately',
-                'the protagonist\'s outsider perspective identifies a solution locals cannot see',
-                'a local power structure shifts in a way that creates opportunity',
-                'an enemy\'s reliance on the world\'s standard rules becomes a vulnerability',
-                'a resource unique to this world becomes available at a key moment',
-                'a side quest or detour pays off in the main situation',
-                'a magical or supernatural element activates in response to genuine need',
-                'a party member\'s class or background provides the specific thing the situation requires',
-                'a local faction\'s internal politics creates an unexpected opening',
-                'something the protagonist brought from another context becomes a significant advantage here',
-                'a seemingly impossible local rule turns out to have a loophole',
-                'a piece of information obtained earlier pays off in a way that reframes the current situation',
-            ],
-            negative: [
-                'a rule of this world interacts badly with someone\'s abilities or choices',
-                'a reputation or title acquired earlier now creates an unwanted obligation',
-                'a local power structure shifts in a way that removes previous support',
-                'an enemy demonstrates knowledge of the world\'s rules that they should not have',
-                'a magical or supernatural element activates at the wrong moment for the wrong person',
-                'a side quest or earlier decision creates a complication in the main situation',
-                'a local faction\'s involvement changes the stakes in an unwelcome way',
-                'a unique property of this world removes an option that seemed available',
-                'a previously neutral figure in the world takes a side and it is not this one',
-                'an ability or class trait has a cost or limitation that is only now relevant',
-                'a piece of world lore that was filed away as flavor turns out to be a warning',
-                'the protagonist\'s outsider status creates a blind spot at a critical moment',
-                'a resource that this world runs on becomes scarce or contested at the wrong time',
-                'a local custom demands something that complicates the current plan',
-                'an NPC who had been helpful reveals they have been navigating their own agenda',
-            ],
-        },
-        MAJOR: {
-            positive: [
-                'a power or ability that has been inaccessible finally becomes available',
-                'the protagonist\'s status in this world reaches a point where it changes the rules of engagement',
-                'a piece of system knowledge reveals something that changes everything',
-                'an impossible alliance forms around a threat that is larger than existing conflicts',
-                'a legendary or mythic element of this world turns out to be real and accessible',
-                'the world itself intervenes in a way that cannot be explained by its own internal rules',
-                'a choice made very early pays off in a way that reframes the entire journey',
-                'a figure of great power in this world chooses a side and it is this one',
-                'a world mechanic that has been an obstacle flips into an advantage',
-                'a seemingly closed path opens through a piece of world knowledge no one thought to apply',
-                'the protagonist\'s difference from this world turns out to be precisely what it needed',
-                'an enemy\'s greatest strength turns out to depend on a rule of the world that can be broken',
-                'a power structure in this world collapses in a way that opens entirely new possibilities',
-                'a piece of lore from before the story turns out to be about what is happening now',
-                'something the world said was impossible simply turns out not to be',
-            ],
-            negative: [
-                'a world-level threat enters the situation that dwarfs the current conflict',
-                'a power or ability is sealed, removed, or turned against its owner',
-                'a rule of this world changes or is revealed to have always worked differently than assumed',
-                'a figure of great power in this world takes an opposing position and commits to it',
-                'a legendary threat that was theoretical becomes immediate',
-                'a world mechanic that was an advantage is exploited by an enemy',
-                'a power structure that provided stability collapses at the worst possible time',
-                'a choice made much earlier is revealed to have had world-level consequences',
-                'an ally\'s class or ability turns out to place them in direct conflict with what is needed',
-                'the system itself — classes, levels, skills — interacts with the situation in a deeply unfavorable way',
-                'something the world held dormant wakes up because of what the protagonist has been doing',
-                'a faction or power that was neutral commits to opposition',
-                'the world\'s version of an impossible situation turns out to actually be impossible',
-                'a price attached to an earlier power or choice comes due all at once',
-                'what seemed like a manageable complication of the world\'s rules turns out to be existential',
-            ],
-        },
-    },
-
-    kpop: {
-        SUBTLE: {
-            positive: [
-                'a small gesture from a fan reaches the idol at exactly the right moment',
-                'a candid moment is captured and received warmly rather than misused',
-                'an offhand creative choice in rehearsal turns out to be exactly what the stage needed',
-                'industry chemistry between two people clicks during a shared project',
-                'a rumor circulating about the idol turns out to be less damaging than feared',
-                'a moment of genuine connection with a fan does not go public but stays with the idol',
-                'a small industry favor from months ago pays off in an unexpected way',
-                'a staff member or junior artist turns out to be quietly protective',
-                'a skill developed in private turns out to be exactly what an upcoming project needs',
-                'a low-profile appearance becomes a significant moment for the right audience',
-                'something the idol said in an interview is reframed by context and lands better than expected',
-                'a scheduled obligation shifts in a way that creates a small but real breathing space',
-                'something lost in the chaos of the schedule turns up at the right moment',
-                'a creative instinct the idol suppressed turns out to have been correct',
-                'an industry relationship that felt purely formal turns out to have genuine warmth',
-            ],
-            negative: [
-                'a candid moment is captured and the framing is unfavorable',
-                'an offhand comment in a casual context gets noted and circulated',
-                'a rumor surfaces that is small but persistent and requires energy to not address',
-                'a creative contribution is received politely but not integrated',
-                'a schedule overlap creates a conflict that reveals a priority the idol did not want made visible',
-                'a small industry favor is called in at an inconvenient time',
-                'a staff member\'s loyalty turns out to have limits',
-                'a skill or project the idol has invested in quietly is mentioned publicly at the wrong moment',
-                'something the idol managed carefully slips just slightly in a visible way',
-                'a low-profile moment gets more attention than intended',
-                'something said in a private context is repeated, stripped of nuance',
-                'a moment of exhaustion is noticed by more people than the idol realized',
-                'an industry relationship that seemed solid turns out to have been contingent on something',
-                'a creative instinct the idol acted on is questioned by the people whose opinion matters',
-                'something minor surfaces that connects to something the idol would prefer stayed separate',
-            ],
-        },
-        MINOR: {
-            positive: [
-                'a project the idol was not the center of generates significant attention for their contribution',
-                'an industry figure the idol has wanted to connect with initiates contact',
-                'a piece of creative work that was shelved turns out to be exactly what is needed now',
-                'the idol\'s reputation for something specific opens a door in an unexpected field',
-                'a controversy that was building deflates because of something unrelated',
-                'a new alliance within the industry forms around a shared creative interest',
-                'a fan community\'s organized support shifts public perception at a useful moment',
-                'an opportunity surfaces that no one else in the idol\'s position was considered for',
-                'a relationship the idol has invested in carefully turns out to be genuinely reciprocal',
-                'a narrative the industry had been building around the idol shifts in a favorable direction',
-                'a skill or quality the idol has been underestimated for becomes publicly recognized',
-                'a past statement or action is rediscovered and received far better in the current context',
-                'a personal project or creative risk lands in a way the idol did not expect',
-                'an industry barrier that seemed fixed turns out to have a specific key',
-                'a rival\'s misstep creates space that benefits the idol without any action on their part',
-            ],
-            negative: [
-                'a controversy surfaces that is not the idol\'s fault but requires their response',
-                'an industry figure the idol has needed to impress forms an opinion at the wrong moment',
-                'a piece of creative work the idol is proud of is publicly compared unfavorably',
-                'a relationship the idol has maintained carefully is reframed by outside speculation',
-                'a fan community\'s reaction to something creates a pressure the idol did not anticipate',
-                'an opportunity is publicly given to someone else and the comparison is drawn',
-                'a narrative the industry has been building about the idol begins to work against them',
-                'a past statement or action resurfaces in a context that changes its meaning',
-                'a personal investment — creative, relational — becomes visible in a way that exposes it to judgment',
-                'a rival\'s success creates a contrast that the idol cannot control the framing of',
-                'a scheduled project is delayed or changed in a way that has public implications',
-                'an alliance that seemed stable shifts and the shift is noticed',
-                'an industry figure who had been neutral publicly aligns against',
-                'something the idol has been managing privately becomes a matter of industry knowledge',
-                'a creative direction the idol has committed to is questioned by people with the power to redirect it',
-            ],
-        },
-        MAJOR: {
-            positive: [
-                'a major public moment redefines how the idol is perceived at an industry level',
-                'a long-term investment in a specific creative direction is publicly validated',
-                'a figure of significant industry power publicly endorses or aligns with the idol',
-                'a controversy that had been building is resolved in a way that strengthens rather than damages',
-                'a creative project that felt like a risk becomes a defining moment',
-                'a relationship that has been complicated by industry context reaches genuine resolution',
-                'a narrative that had been imposed on the idol from outside finally breaks',
-                'an opportunity arrives that was not anticipated and changes the scale of what is possible',
-                'a community — fans, peers, industry — coalesces around the idol in a visible and meaningful way',
-                'a truth about the idol that has been obscured becomes publicly known and it helps',
-                'a creative collaboration produces something that exceeds what either party could have done alone',
-                'a long-running tension within the idol\'s professional life resolves unexpectedly',
-                'something the idol made quietly turns out to matter enormously to the right people',
-                'a power structure within the industry shifts in a way that benefits the idol\'s position',
-                'a relationship that was professional becomes something that genuinely sustains the idol',
-            ],
-            negative: [
-                'a large-scale public controversy attaches to the idol and cannot be managed with standard tools',
-                'a creative investment that defined a period is publicly rejected or dismantled',
-                'a figure of significant industry power publicly opposes or distances from the idol',
-                'a relationship the idol depended on — professionally or personally — publicly fractures',
-                'a truth about the idol\'s situation becomes public knowledge and the framing is not theirs',
-                'a long-running narrative that was being carefully managed collapses all at once',
-                'a rival\'s moment completely resets the context the idol had been building',
-                'a creative direction the idol committed to is revealed to have been a strategic mistake',
-                'a community that had been supportive fractures around the idol',
-                'a power structure within the industry shifts in a way that removes protection or opportunity',
-                'a past compromise or decision is exposed in a way that changes how the idol is read',
-                'a project of significant importance fails publicly and the idol is associated with it',
-                'something managed privately for a long time becomes the subject of industry-wide knowledge',
-                'an alliance that had been central to the idol\'s position dissolves under pressure',
-                'a defining moment goes wrong and the narrative that forms around it is not the idol\'s to control',
-            ],
-        },
-    },
-
-    xianxia: {
-        SUBTLE: {
-            positive: [
-                'a fragment of spiritual energy from an unexpected source proves unexpectedly nourishing',
-                'someone\'s reputation in the cultivation world reaches a person who matters, ahead of them',
-                'a minor ghost or spirit shows deference in a way that others notice',
-                'a technique practiced in obscurity turns out to apply to the current situation precisely',
-                'the spiritual energy of a place is more abundant than expected',
-                'an old debt in the cultivation world is remembered in the protagonist\'s favor',
-                'a piece of sect lore or heavenly rule turns out to provide cover for something needed',
-                'someone\'s true character is perceived through their spiritual energy rather than their words',
-                'a cultivation breakthrough occurs at an inconvenient moment but changes the balance of things',
-                'an insignificant ghost or spirit provides information no living person would share',
-                'something discarded or abandoned in the cultivation world turns out to still be functional',
-                'a small act of genuine compassion is witnessed by someone who matters',
-                'the protagonist\'s approach — unorthodox, humble, unexpected — creates an opening',
-                'a past master\'s lingering intent surfaces in an artifact or location at a useful time',
-                'two unrelated threads of spiritual cause and effect converge in someone\'s favor',
-            ],
-            negative: [
-                'spiritual energy in the area feels wrong — thick, old, contaminated by something unresolved',
-                'a ghost or spirit in the area has noticed someone and has not been noticed in return yet',
-                'a sect rule or heavenly decree that was ignorable becomes relevant',
-                'a reputation precedes someone in a way they did not intend and did not want',
-                'a resentful energy begins to accumulate around a specific person or place',
-                'a spiritual object behaves erratically without clear cause',
-                'a cultivation imbalance that had been managed becomes slightly less manageable',
-                'a small wrongdoing from the past — someone else\'s — leaves a mark on the current situation',
-                'a ghost in the area is more coherent and more aware than it appeared',
-                'a technique or ability behaves unexpectedly, just slightly',
-                'an old sect rivalry surfaces in a way that no one here caused but everyone feels',
-                'a place that seemed spiritually neutral turns out to have a history',
-                'spiritual energy is drawn toward someone without their control or intent',
-                'an ancestor or lineage matter surfaces that has implications someone would have preferred to avoid',
-                'something that was sealed or contained is less sealed than it was',
-            ],
-        },
-        MINOR: {
-            positive: [
-                'a ghost with unfinished business chooses to resolve it in a way that benefits those present',
-                'a sect or faction\'s political situation shifts to create an unexpected ally',
-                'a forbidden or unorthodox technique turns out to be precisely what the situation requires',
-                'a merit or good deed accrued without thought pays off in the cultivation world\'s accounting',
-                'a divine official, cultivator, or spirit offers information they had no obligation to share',
-                'a place of heavenly significance provides shelter or advantage to the deserving',
-                'a spiritual weapon or artifact recognizes the right person',
-                'a long-standing ghost\'s coherence is used as an advantage rather than a problem',
-                'something believed to be corrupted or resentful turns out to be merely wounded',
-                'a reputation built on misunderstanding is corrected by events rather than argument',
-                'a sect or clan matter that has been a liability transforms into a point of leverage',
-                'a spiritual technique\'s true nature reveals itself at the moment it is most needed',
-                'an enemy\'s reliance on conventional cultivation wisdom becomes a vulnerability',
-                'two cultivators with no reason to cooperate find a third path through a shared problem',
-                'a divine intervention arrives in the form that was least expected and most needed',
-            ],
-            negative: [
-                'resentful energy accumulates to the point where it begins to affect those nearby',
-                'a sect or clan political matter creates an obligation that cannot be cleanly refused',
-                'a ghost or spirit\'s coherence increases in a way that makes it significantly more dangerous',
-                'a cultivation technique\'s side effect becomes relevant at the worst moment',
-                'a heavenly decree or divine rule creates an obstruction that has no obvious workaround',
-                'a forbidden technique leaves a mark that others can detect',
-                'a spiritual debt from the past is called in by someone who has the standing to do so',
-                'a divine official becomes aware of the situation and their interest is not protective',
-                'an artifact with a complicated history makes its complications felt',
-                'a faction\'s involvement shifts the moral weight of the situation in an unhelpful direction',
-                'resentful energy that was being managed breaks containment',
-                'a reputation — earned or inherited — becomes actively counterproductive',
-                'a sect or lineage matter resurfaces and its resolution requires something that is not available',
-                'two sources of spiritual conflict in the area begin to reinforce each other',
-                'a ghost achieves enough coherence to pursue a specific agenda',
-            ],
-        },
-        MAJOR: {
-            positive: [
-                'a being of significant spiritual power intervenes on behalf of those who did not ask',
-                'a long-running spiritual injustice resolves and the release of that energy changes everything',
-                'a forbidden path or unorthodox cultivation method is validated by its outcome',
-                'a figure from the heavenly realm takes an interest that turns out to be genuinely protective',
-                'a ghost\'s story reaches its conclusion and what they leave behind is a gift',
-                'a spiritual truth that was obscured becomes undeniable and changes the balance of power',
-                'a sect, clan, or faction\'s centuries-long mistake begins to be corrected',
-                'a weapon, technique, or artifact of profound significance aligns with someone\'s intent',
-                'a debt between realms — heavenly, human, ghostly — is settled in a way no one predicted',
-                'a cultivation method that was abandoned for being too difficult turns out to have been the right path',
-                'two lineages or factions in conflict find resolution through what happens here',
-                'a divine law that seemed immovable reveals a condition under which it does not apply',
-                'someone\'s spiritual nature — long hidden, long suppressed — is finally recognized by the world',
-                'a long-running spiritual misunderstanding that has caused harm finally corrects itself',
-                'a moment of genuine sacrifice changes the spiritual accounting of a situation entirely',
-            ],
-            negative: [
-                'a cultivation deviation begins that cannot be corrected by conventional means',
-                'a figure of immense spiritual power decides the current situation requires their direct involvement',
-                'a spiritual seal that has been holding something back fails',
-                'a ghost or entity achieves a level of power or coherence that changes what kind of problem it is',
-                'a heavenly decree is handed down that closes off the most obvious paths forward',
-                'a sect or faction\'s collective resentment crystallizes into something that acts',
-                'a forbidden technique\'s full cost arrives',
-                'a lineage curse or ancestral burden activates at the worst possible moment',
-                'a divine official reveals that they have known about the situation far longer than anyone realized',
-                'two sources of resentful energy merge into something that is more than the sum of its parts',
-                'a spiritual truth is revealed that changes the meaning of everything that has come before',
-                'a path that seemed like the right one turns out to have been feeding something it should not have',
-                'a figure trusted in the cultivation world reveals that their interest has always been in something else',
-                'a long-contained spiritual catastrophe begins to wake up',
-                'the price of everything done in this arc — every spiritual shortcut, every debt incurred — arrives at once',
-            ],
-        },
-    },
-};
-
-
-// ── Pool builder ───────────────────────────────────────────
-
 
 // ── Custom setting storage helpers ─────────────────────────
 
@@ -800,15 +1003,12 @@ function getCustomSettings() {
 }
 
 function saveCustomSetting(cs) {
-    const store = getCustomSettings();
-    store[cs.id] = cs;
+    getCustomSettings()[cs.id] = cs;
     saveSettingsDebounced();
 }
 
 function deleteCustomSetting(id) {
-    const store = getCustomSettings();
-    delete store[id];
-    // If active setting was this one, reset to none
+    delete getCustomSettings()[id];
     if (extension_settings[EXT].setting === `custom:${id}`) {
         extension_settings[EXT].setting = 'none';
         $('#we_setting').val('none');
@@ -820,7 +1020,7 @@ function getCustomSettingById(id) {
     return getCustomSettings()[id] || null;
 }
 
-// ── Connection profile helpers (mirror Wild Offscreen) ─────
+// ── Connection profile helpers ─────────────────────────────
 
 function getConnectionProfiles() {
     const ctx = SillyTavern.getContext();
@@ -831,9 +1031,7 @@ function getDefaultProfileName() {
     const ctx = SillyTavern.getContext();
     const cm = ctx.extensionSettings?.connectionManager;
     if (!cm) return '';
-    return cm.profiles?.find(p => p.id === cm.selectedProfile)?.name
-        || cm.profiles?.[0]?.name
-        || '';
+    return cm.profiles?.find(p => p.id === cm.selectedProfile)?.name || cm.profiles?.[0]?.name || '';
 }
 
 // ── API call ───────────────────────────────────────────────
@@ -841,73 +1039,39 @@ function getDefaultProfileName() {
 async function callAPI(messages, maxTokens = 8000) {
     const s = extension_settings[EXT];
     const profiles = getConnectionProfiles();
-
-    if (!profiles.length) {
-        toastr.error('No connection profiles found. Set one up in ST settings.');
-        return null;
-    }
+    if (!profiles.length) { toastr.error('No connection profiles found.'); return null; }
 
     const profileName = s.connectionProfile || getDefaultProfileName();
     const profile = profiles.find(p => p.name === profileName) || profiles[0];
-
-    if (!profile) {
-        toastr.error('No connection profile available.');
-        return null;
-    }
+    if (!profile) { toastr.error('No connection profile available.'); return null; }
 
     const apiName = profile.api || 'openai';
     const cc_source = apiName === 'google' ? 'makersuite' : apiName;
 
     const generate_data = {
-        messages,
-        model: profile.model || '',
-        temperature: 0.95,
-        frequency_penalty: 0.1,
-        presence_penalty: 0.2,
-        max_tokens: maxTokens,
-        stream: false,
-        chat_completion_source: cc_source,
+        messages, model: profile.model || '', temperature: 0.95,
+        frequency_penalty: 0.1, presence_penalty: 0.2, max_tokens: maxTokens,
+        stream: false, chat_completion_source: cc_source,
     };
-
     if (profile['secret-id']) generate_data['secret_id'] = profile['secret-id'];
-    if (cc_source === 'custom' && profile['api-url']) {
-        generate_data['custom_url'] = profile['api-url'].trim().replace(/\/+$/, '');
-    }
-    if (cc_source === 'vertexai' && profile['api-url']) {
-        generate_data['vertexai_region'] = profile['api-url'];
-    }
-    if (cc_source === 'makersuite' || cc_source === 'claude') {
-        generate_data['use_sysprompt'] = true;
-    }
+    if (cc_source === 'custom' && profile['api-url']) generate_data['custom_url'] = profile['api-url'].trim().replace(/\/+$/, '');
+    if (cc_source === 'vertexai' && profile['api-url']) generate_data['vertexai_region'] = profile['api-url'];
+    if (cc_source === 'makersuite' || cc_source === 'claude') generate_data['use_sysprompt'] = true;
 
     try {
         const r = await fetch('/api/backends/chat-completions/generate', {
-            method: 'POST',
-            headers: getRequestHeaders(),
-            body: JSON.stringify(generate_data),
+            method: 'POST', headers: getRequestHeaders(), body: JSON.stringify(generate_data),
         });
-
         const text = await r.text();
-        if (!r.ok) {
-            console.error('[WildEvents] API error:', r.status, text.slice(0, 300));
-            toastr.error(`API error ${r.status}. Check console.`);
-            return null;
-        }
-
+        if (!r.ok) { console.error('[WE] API error:', r.status, text.slice(0, 300)); toastr.error(`API error ${r.status}`); return null; }
         const data = JSON.parse(text);
-        if (cc_source === 'claude') {
-            return data?.content?.[0]?.text?.trim() || null;
-        } else {
-            return data?.choices?.[0]?.message?.content?.trim() || null;
-        }
-    } catch (e) {
-        console.error('[WildEvents] Fetch error:', e.message);
-        toastr.error('API fetch failed. Check console.');
-        return null;
-    }
+        return cc_source === 'claude'
+            ? data?.content?.[0]?.text?.trim() || null
+            : data?.choices?.[0]?.message?.content?.trim() || null;
+    } catch (e) { console.error('[WE] Fetch error:', e.message); toastr.error('API fetch failed.'); return null; }
 }
 
-// ── Setting generation ─────────────────────────────────────
+// ── Setting generation prompts ─────────────────────────────
 
 const GENERATION_SYSTEM_PROMPT = `You are a creative writing assistant generating narrative event pools for a roleplay randomizer.
 The user describes a setting. You generate event concepts across three tiers (SUBTLE, MINOR, MAJOR) and two polarities (positive, negative).
@@ -961,35 +1125,16 @@ Return only the JSON object.`;
 }
 
 function parseGeneratedEvents(raw) {
-    // Strip markdown code fences if model added them anyway
-    let cleaned = raw.trim();
-    cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-
+    let cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     let parsed;
-    try {
-        parsed = JSON.parse(cleaned);
-    } catch (e) {
-        // Try to extract JSON object from response
+    try { parsed = JSON.parse(cleaned); } catch {
         const match = cleaned.match(/\{[\s\S]*\}/);
-        if (match) {
-            try { parsed = JSON.parse(match[0]); } catch { return null; }
-        } else {
-            return null;
-        }
+        if (match) { try { parsed = JSON.parse(match[0]); } catch { return null; } } else { return null; }
     }
-
-    // Validate structure
-    const tiers = ['SUBTLE', 'MINOR', 'MAJOR'];
-    for (const tier of tiers) {
-        if (!parsed[tier] || !Array.isArray(parsed[tier].positive) || !Array.isArray(parsed[tier].negative)) {
-            return null;
-        }
-        // Ensure at least some entries
-        if (parsed[tier].positive.length === 0 || parsed[tier].negative.length === 0) {
-            return null;
-        }
+    for (const tier of ['SUBTLE', 'MINOR', 'MAJOR']) {
+        if (!parsed[tier] || !Array.isArray(parsed[tier].positive) || !Array.isArray(parsed[tier].negative)) return null;
+        if (!parsed[tier].positive.length || !parsed[tier].negative.length) return null;
     }
-
     return parsed;
 }
 
@@ -998,147 +1143,45 @@ async function generateCustomSetting(name, description) {
         { role: 'system', content: GENERATION_SYSTEM_PROMPT },
         { role: 'user', content: buildGenerationPrompt(description) },
     ];
-
     const raw = await callAPI(messages, 8000);
     if (!raw) return null;
-
     const events = parseGeneratedEvents(raw);
-    if (!events) {
-        console.error('[WildEvents] Failed to parse generated events. Raw:', raw.slice(0, 500));
-        toastr.error('Could not parse generated events. Try again or check console.');
-        return null;
+    if (!events) { console.error('[WE] Parse failed:', raw.slice(0, 500)); toastr.error('Could not parse generated events.'); return null; }
+    return { id: `cs_${Date.now()}`, name, description, events };
+}
+
+// ── Category selection (weighted random) ───────────────────
+
+function pickCategory() {
+    const total = CATEGORIES.reduce((a, c) => a + c.weight, 0);
+    let rand = Math.random() * total;
+    for (const cat of CATEGORIES) {
+        rand -= cat.weight;
+        if (rand <= 0) return cat;
     }
-
-    const id = `cs_${Date.now()}`;
-    return { id, name, description, events };
+    return CATEGORIES[0];
 }
 
+// ── Pool builder ───────────────────────────────────────────
 
-// ── Chat badge ─────────────────────────────────────────────
-
-function injectBadge(result) {
-    updateWidget(result);
-}
-
-function removeBadges() {
-    updateWidget(null);
-}
-
-// ── Floating widget ────────────────────────────────────────
-
-function ensureWidget() {
-    if ($('#we_widget').length) return;
-
-    const $widget = $(`
-        <div id="we_widget" style="display:none;">
-            <button id="we_fab" aria-label="Wild Events">
-                <i class="fa-solid fa-yin-yang" style="font-size:16px;pointer-events:none;"></i>
-                <span id="we_fab_dot"></span>
-            </button>
-            <div id="we_popup" style="display:none;">
-                <div id="we_pop_tier"></div>
-                <div id="we_pop_impact"></div>
-                <div id="we_pop_event"></div>
-                <div id="we_pop_setting" style="display:none;"></div>
-                <div id="we_pop_tension">
-                    <span id="we_pop_tension_label">Tension</span>
-                    <div id="we_pop_bar_bg"><div id="we_pop_bar_fill"></div></div>
-                    <span id="we_pop_tension_val"></span>
-                </div>
-            </div>
-        </div>
-    `);
-
-    $('body').append($widget);
-
-    // Toggle popup on fab click
-    $('#we_fab').on('click', function(e) {
-        e.stopPropagation();
-        const $popup = $('#we_popup');
-        $popup.is(':visible') ? $popup.hide() : $popup.show();
-    });
-
-    // Close on outside click
-    $(document).on('click.we_widget', function(e) {
-        if (!$(e.target).closest('#we_widget').length) {
-            $('#we_popup').hide();
-        }
-    });
-}
-
-function updateWidget(result) {
-    const s = extension_settings[EXT];
-    if (!s.showBadge) {
-        $('#we_widget').hide();
-        return;
-    }
-
-    ensureWidget();
-
-    const isNone = !result || result.event.id === 'NONE';
-
-    if (isNone) {
-        const tension = result?.tension ?? getTension();
-        $('#we_fab_dot').attr('class', 'we_dot_none');
-        $('#we_pop_tier').text('NO CHANGE');
-        $('#we_pop_impact').html('<span style="opacity:0.4">—</span>');
-        $('#we_pop_event').text('Story continues naturally.');
-        $('#we_pop_setting').hide();
-        $('#we_pop_tension_val').text(`${tension.toFixed(1)}%`);
-        $('#we_pop_bar_fill').css('width', `${Math.min(100, tension)}%`);
-        $('#we_widget').show();
-        return;
-    }
-
-    const isPos = result.isPositive;
-    const tierName = result.event.name;
-    const eventType = result.eventType || '';
-    const settingLabel = getActiveSettingLabel();
-    const tension = result.tension ?? getTension();
-
-    $('#we_fab_dot').attr('class', isPos ? 'we_dot_pos' : 'we_dot_neg');
-    $('#we_pop_tier').text(tierName);
-    $('#we_pop_impact').html(
-        `<span class="${isPos ? 'we_pop_arrow_pos' : 'we_pop_arrow_neg'}">${isPos ? '▲' : '▼'}</span> ${isPos ? 'Positive' : 'Negative'}`
-    );
-    $('#we_pop_event').text(eventType);
-
-    if (settingLabel) {
-        $('#we_pop_setting').text(settingLabel).show();
-    } else {
-        $('#we_pop_setting').hide();
-    }
-
-    $('#we_pop_tension_val').text(`${tension.toFixed(1)}%`);
-    $('#we_pop_bar_fill').css('width', `${Math.min(100, tension)}%`);
-
-    $('#we_widget').show();
-}
-
-// ── Pool builder (updated to support custom settings) ──────
-
-function buildPool(scaleId, isPositive) {
-    const base = EVENT_TYPES[scaleId];
-    if (!base) return [];
-    const baseList = isPositive ? base.positive : base.negative;
+function buildPool(scaleId, categoryId, isPositive) {
+    const scaleEvents = EVENTS[scaleId];
+    if (!scaleEvents) return [];
+    const catEvents = scaleEvents[categoryId];
+    if (!catEvents) return [];
+    const baseList = isPositive ? catEvents.positive : catEvents.negative;
 
     const setting = extension_settings[EXT]?.setting || 'none';
 
-    // Built-in setting
-    if (setting !== 'none' && !setting.startsWith('custom:') && SETTING_EVENTS[setting]) {
-        const settingPool = SETTING_EVENTS[setting][scaleId];
-        if (!settingPool) return baseList;
-        const settingList = isPositive ? settingPool.positive : settingPool.negative;
-        return [...baseList, ...settingList];
-    }
-
-    // Custom setting
+    // Custom setting — adds to the pool (custom settings don't have categories, so they add globally)
     if (setting.startsWith('custom:')) {
         const id = setting.slice(7);
         const cs = getCustomSettingById(id);
-        if (cs && cs.events && cs.events[scaleId]) {
-            const settingList = isPositive ? cs.events[scaleId].positive : cs.events[scaleId].negative;
-            return [...baseList, ...(settingList || [])];
+        // Map scale IDs to custom setting keys
+        const csKey = scaleId === 'TURNING' ? 'MINOR' : scaleId === 'WORLDSHAKING' ? 'MAJOR' : scaleId;
+        if (cs?.events?.[csKey]) {
+            const extra = isPositive ? cs.events[csKey].positive : cs.events[csKey].negative;
+            return [...baseList, ...(extra || [])];
         }
     }
 
@@ -1147,8 +1190,8 @@ function buildPool(scaleId, isPositive) {
 
 // ── Event frequency counters ──────────────────────────────
 
-function getCountsKey(scaleId, isPositive) {
-    return `${scaleId}:${isPositive ? 'pos' : 'neg'}`;
+function getCountsKey(scaleId, categoryId, isPositive) {
+    return `${scaleId}:${categoryId}:${isPositive ? 'pos' : 'neg'}`;
 }
 
 function getEventCounts() {
@@ -1158,19 +1201,16 @@ function getEventCounts() {
     return ctx.chatMetadata.we_counts;
 }
 
-function getCount(scaleId, isPositive, eventText) {
-    const key = getCountsKey(scaleId, isPositive);
+function getCount(key, eventText) {
     return getEventCounts()[key]?.[eventText] ?? 0;
 }
 
-function incrementCount(scaleId, isPositive, eventText) {
+function incrementCount(key, eventText) {
     const ctx = getContext();
     if (!ctx.chatMetadata) return;
     if (!ctx.chatMetadata.we_counts) ctx.chatMetadata.we_counts = {};
-    const key = getCountsKey(scaleId, isPositive);
     if (!ctx.chatMetadata.we_counts[key]) ctx.chatMetadata.we_counts[key] = {};
-    const counts = ctx.chatMetadata.we_counts[key];
-    counts[eventText] = (counts[eventText] ?? 0) + 1;
+    ctx.chatMetadata.we_counts[key][eventText] = (ctx.chatMetadata.we_counts[key][eventText] ?? 0) + 1;
     ctx.saveMetadata();
 }
 
@@ -1181,13 +1221,13 @@ function resetEventCounts() {
     ctx.saveMetadata();
 }
 
-function pickEventType(scaleId, isPositive) {
+function pickEventType(scaleId, categoryId, isPositive) {
     if (scaleId === 'NONE') return null;
-    const pool = buildPool(scaleId, isPositive);
+    const pool = buildPool(scaleId, categoryId, isPositive);
     if (!pool.length) return null;
 
-    // Weighted random: weight = 1 / (1 + count)
-    const weights = pool.map(e => 1 / (1 + getCount(scaleId, isPositive, e)));
+    const key = getCountsKey(scaleId, categoryId, isPositive);
+    const weights = pool.map(e => 1 / (1 + getCount(key, e)));
     const total = weights.reduce((a, b) => a + b, 0);
     let rand = Math.random() * total;
     let chosen = pool[pool.length - 1];
@@ -1195,8 +1235,7 @@ function pickEventType(scaleId, isPositive) {
         rand -= weights[i];
         if (rand <= 0) { chosen = pool[i]; break; }
     }
-
-    incrementCount(scaleId, isPositive, chosen);
+    incrementCount(key, chosen);
     return chosen;
 }
 
@@ -1216,36 +1255,41 @@ function saveTension(val) {
 
 // ── Core logic ─────────────────────────────────────────────
 
-function findEvent(score) {
-    return EVENTS.find(e => score >= e.min && score <= e.max) || EVENTS[0];
+function findScale(score) {
+    return SCALES.find(e => score >= e.min && score <= e.max) || SCALES[0];
 }
 
 function getActiveSettingLabel() {
     const setting = extension_settings[EXT]?.setting || 'none';
     if (setting === 'none') return null;
-    if (!setting.startsWith('custom:')) return SETTING_LABELS[setting] || null;
-    const id = setting.slice(7);
-    const cs = getCustomSettingById(id);
-    return cs ? cs.name : null;
+    if (setting.startsWith('custom:')) {
+        const cs = getCustomSettingById(setting.slice(7));
+        return cs ? cs.name : null;
+    }
+    return SETTING_LABELS[setting] || null;
 }
 
 function formatPrompt(result) {
     const label = extension_settings[EXT].label || DEFAULTS.label;
     const impact = result.isPositive ? 'POSITIVE' : 'NEGATIVE';
 
-    if (result.event.id === 'NONE') {
+    if (result.scale.id === 'NONE') {
         return `[${label}: NO CHANGE]\nNo forced twist. Story continues naturally.`;
     }
 
     const settingLabel = getActiveSettingLabel();
-    const eventType = result.eventType;
+    const isSoftTier = (result.scale.id === 'SUBTLE' || result.scale.id === 'MINOR');
 
     let lines = [
-        `[${label}: ${result.event.name} | ${impact}]`,
+        `[${label}: ${result.scale.name} | ${impact} | ${result.category.name}]`,
         settingLabel ? `Setting: ${settingLabel}.` : '',
-        eventType ? `Type: ${eventType}.` : '',
+        result.eventType ? `Event: ${result.eventType}.` : '',
         result.forced ? '(FORCED — tension reached maximum)' : '',
-        'Implement naturally in the scene. Do not skip or change the event type.',
+        'Weave this into the current scene through actions, dialogue, or observations of characters.',
+        'The event may affect any character — main characters, the user\'s character, or side characters. Prioritize those most relevant to the current scene, but only if the event fits them logically.',
+        isSoftTier
+            ? 'If the event does not fit the current moment, hint at it subtly rather than forcing it.'
+            : 'This event must have a tangible impact on the scene — do not reduce it to a hint or implication.',
     ].filter(Boolean);
 
     return lines.join('\n');
@@ -1253,42 +1297,32 @@ function formatPrompt(result) {
 
 function runEvent(isNewMessage) {
     const s = extension_settings[EXT];
-
-    if (!s.enabled) {
-        setExtensionPrompt(EXT, '', 1, s.depth);
-        return;
-    }
+    if (!s.enabled) { setExtensionPrompt(EXT, '', 1, s.depth); return; }
 
     let tension = getTension();
+    if (isNewMessage) { tension = Math.min(100, tension + s.step); saveTension(tension); }
 
-    if (isNewMessage) {
-        tension = Math.min(100, tension + s.step);
-        saveTension(tension);
-    }
-
-    let baseRoll, modifier, finalScore, isPositive, event;
+    let baseRoll, modifier, finalScore, isPositive, scale;
     let forced = false;
 
     baseRoll = Math.floor(Math.random() * 20) + 1;
     modifier = Math.floor(tension / 8);
     isPositive = baseRoll % 2 === 0;
 
-    if (tension >= 100) {
-        forced = true;
-        finalScore = 25;
-    } else {
-        finalScore = baseRoll + modifier;
-    }
+    if (tension >= 100) { forced = true; finalScore = 27; }
+    else { finalScore = baseRoll + modifier; }
 
-    event = findEvent(finalScore);
+    scale = findScale(finalScore);
 
     if (isNewMessage) {
-        if (event.adj === 'reset') saveTension(0);
-        else if (event.adj === 'reduce') saveTension(tension * 0.75);
+        if (scale.adj === 'reset') saveTension(0);
+        else if (scale.adj === 'reduce50') saveTension(tension * 0.5);
+        else if (scale.adj === 'reduce25') saveTension(tension * 0.75);
     }
 
-    const eventType = pickEventType(event.id, isPositive);
-    const result = { tension: getTension(), baseRoll, modifier, finalScore, isPositive, event, forced, eventType };
+    const category = pickCategory();
+    const eventType = pickEventType(scale.id, category.id, isPositive);
+    const result = { tension: getTension(), baseRoll, modifier, finalScore, isPositive, scale, category, forced, eventType };
     const prompt = formatPrompt(result);
     setExtensionPrompt(EXT, prompt, 1, s.depth, false, 0);
 
@@ -1296,7 +1330,7 @@ function runEvent(isNewMessage) {
     saveSettingsDebounced();
 
     updateUI(result);
-    if (isNewMessage) injectBadge(result);
+    if (s.showBadge) updateWidget(result);
 }
 
 // ── Generation hooks ───────────────────────────────────────
@@ -1304,67 +1338,92 @@ function runEvent(isNewMessage) {
 function onMessageSent() { runEvent(true); }
 function onMessageSwiped() { runEvent(false); }
 
-// ── Custom settings UI helpers ─────────────────────────────
 
-function rebuildSettingDropdown() {
-    const $sel = $('#we_setting');
-    const current = extension_settings[EXT].setting || 'none';
+// ── Badge helpers ──────────────────────────────────────────
 
-    $sel.empty();
-    $sel.append('<option value="none">— No setting —</option>');
-    $sel.append('<option value="slavic">Slavic Fantasy</option>');
-    $sel.append('<option value="omegaverse">Omegaverse</option>');
-    $sel.append('<option value="isekai">Isekai / Fantasy</option>');
-    $sel.append('<option value="kpop">K-Pop / Idol</option>');
-    $sel.append('<option value="xianxia">Chinese Xianxia</option>');
+function injectBadge(result) { updateWidget(result); }
+function removeBadges() { updateWidget(null); }
 
-    const customs = Object.values(getCustomSettings());
-    if (customs.length) {
-        $sel.append('<option disabled>── Custom ──</option>');
-        for (const cs of customs) {
-            $sel.append(`<option value="custom:${cs.id}">${cs.name}</option>`);
-        }
-    }
+// ── Floating widget ────────────────────────────────────────
 
-    $sel.val(current);
-    if ($sel.val() === null) {
-        $sel.val('none');
-        extension_settings[EXT].setting = 'none';
-    }
+function ensureWidget() {
+    if ($('#we_widget').length) return;
+
+    const $widget = $(`
+        <div id="we_widget" style="display:none;">
+            <button id="we_fab" aria-label="Wild Events">
+                <i class="fa-solid fa-yin-yang" style="font-size:16px;pointer-events:none;"></i>
+                <span id="we_fab_dot"></span>
+            </button>
+            <div id="we_popup" style="display:none;">
+                <div id="we_pop_tier"></div>
+                <div id="we_pop_impact"></div>
+                <div id="we_pop_category" style="display:none;"></div>
+                <div id="we_pop_event"></div>
+                <div id="we_pop_setting" style="display:none;"></div>
+                <div id="we_pop_tension">
+                    <span id="we_pop_tension_label">Tension</span>
+                    <div id="we_pop_bar_bg"><div id="we_pop_bar_fill"></div></div>
+                    <span id="we_pop_tension_val"></span>
+                </div>
+            </div>
+        </div>
+    `);
+
+    $('body').append($widget);
+    $('#we_fab').on('click', function(e) {
+        e.stopPropagation();
+        const $popup = $('#we_popup');
+        $popup.is(':visible') ? $popup.hide() : $popup.show();
+    });
+    $(document).on('click.we_widget', function(e) {
+        if (!$(e.target).closest('#we_widget').length) $('#we_popup').hide();
+    });
 }
 
-function renderCustomSettingsList() {
-    const $list = $('#we_custom_list');
-    $list.empty();
-    const customs = Object.values(getCustomSettings());
+function updateWidget(result) {
+    const s = extension_settings[EXT];
+    if (!s.showBadge) { $('#we_widget').hide(); return; }
 
-    if (!customs.length) {
-        $list.append('<div class="we_cs_empty">No custom settings yet.</div>');
+    ensureWidget();
+    const isNone = !result || result.scale.id === 'NONE';
+
+    if (isNone) {
+        const tension = result?.tension ?? getTension();
+        $('#we_fab_dot').attr('class', 'we_dot_none');
+        $('#we_pop_tier').text('NO CHANGE');
+        $('#we_pop_impact').html('<span style="opacity:0.4">—</span>');
+        $('#we_pop_category').hide();
+        $('#we_pop_event').text('Story continues naturally.');
+        $('#we_pop_setting').hide();
+        $('#we_pop_tension_val').text(`${tension.toFixed(1)}%`);
+        $('#we_pop_bar_fill').css('width', `${Math.min(100, tension)}%`);
+        $('#we_widget').show();
         return;
     }
 
-    for (const cs of customs) {
-        const isActive = extension_settings[EXT].setting === `custom:${cs.id}`;
-        const $card = $(`
-            <div class="we_cs_card" data-id="${cs.id}">
-                <div class="we_cs_header">
-                    <span class="we_cs_name">${cs.name}</span>
-                    <span class="we_cs_desc_preview">${cs.description.slice(0, 60)}${cs.description.length > 60 ? '…' : ''}</span>
-                </div>
-                <div class="we_cs_actions">
-                    <button class="menu_button we_cs_btn_use ${isActive ? 'we_cs_active' : ''}" data-id="${cs.id}" title="${isActive ? 'Active' : 'Use this setting'}">
-                        ${isActive ? '✓ Active' : 'Use'}
-                    </button>
-                    <button class="menu_button we_cs_btn_export" data-id="${cs.id}" title="Export">⬇ Export</button>
-                    <button class="menu_button we_cs_btn_delete we_btn_danger" data-id="${cs.id}" title="Delete">✕</button>
-                </div>
-            </div>
-        `);
-        $list.append($card);
+    const isPos = result.isPositive;
+    const settingLabel = getActiveSettingLabel();
+    const tension = result.tension ?? getTension();
+
+    $('#we_fab_dot').attr('class', isPos ? 'we_dot_pos' : 'we_dot_neg');
+    $('#we_pop_tier').text(result.scale.name);
+    $('#we_pop_impact').html(
+        `<span class="${isPos ? 'we_pop_arrow_pos' : 'we_pop_arrow_neg'}">${isPos ? '▲' : '▼'}</span> ${isPos ? 'Positive' : 'Negative'}`
+    );
+    if (result.category) {
+        $('#we_pop_category').text(result.category.name).show();
+    } else {
+        $('#we_pop_category').hide();
     }
+    $('#we_pop_event').text(result.eventType || '');
+    settingLabel ? $('#we_pop_setting').text(settingLabel).show() : $('#we_pop_setting').hide();
+    $('#we_pop_tension_val').text(`${tension.toFixed(1)}%`);
+    $('#we_pop_bar_fill').css('width', `${Math.min(100, tension)}%`);
+    $('#we_widget').show();
 }
 
-// ── UI ─────────────────────────────────────────────────────
+// ── Panel UI ───────────────────────────────────────────────
 
 function updateUI(result) {
     const t = result?.tension ?? getTension();
@@ -1376,12 +1435,19 @@ function updateUI(result) {
     $('#we_roll_val').text(result.forced ? '⚡ FORCED' : `${result.baseRoll} + ${result.modifier} = ${result.finalScore}`);
 
     const evEl = $('#we_event_val');
-    evEl.text(result.event.name);
-    evEl.css('color', result.event.id === 'NONE'
+    evEl.text(result.scale.name);
+    evEl.css('color', result.scale.id === 'NONE'
         ? 'var(--SmartThemeBodyColor)'
         : result.isPositive ? '#66bb6a' : '#ef5350');
 
-    if (result.eventType && result.event.id !== 'NONE') {
+    if (result.category && result.scale.id !== 'NONE') {
+        $('#we_category_val').text(result.category.name);
+        $('#we_category_row').show();
+    } else {
+        $('#we_category_row').hide();
+    }
+
+    if (result.eventType && result.scale.id !== 'NONE') {
         $('#we_type_val').text(result.eventType);
         $('#we_type_row').show();
     } else {
@@ -1389,7 +1455,7 @@ function updateUI(result) {
     }
 
     const impEl = $('#we_impact_val');
-    if (result.event.id === 'NONE') {
+    if (result.scale.id === 'NONE') {
         impEl.text('—').css('color', 'var(--SmartThemeBodyColor)');
     } else {
         impEl.text(result.isPositive ? '▲ POSITIVE' : '▼ NEGATIVE');
@@ -1397,11 +1463,50 @@ function updateUI(result) {
     }
 }
 
+function rebuildSettingDropdown() {
+    const $sel = $('#we_setting');
+    const current = extension_settings[EXT].setting || 'none';
+    $sel.empty();
+    $sel.append('<option value="none">— No setting —</option>');
+
+    const customs = Object.values(getCustomSettings());
+    if (customs.length) {
+        $sel.append('<option disabled>── Custom ──</option>');
+        for (const cs of customs) {
+            $sel.append(`<option value="custom:${cs.id}">${cs.name}</option>`);
+        }
+    }
+    $sel.val(current);
+    if ($sel.val() === null) { $sel.val('none'); extension_settings[EXT].setting = 'none'; }
+}
+
+function renderCustomSettingsList() {
+    const $list = $('#we_custom_list');
+    $list.empty();
+    const customs = Object.values(getCustomSettings());
+    if (!customs.length) { $list.append('<div class="we_cs_empty">No custom settings yet.</div>'); return; }
+
+    for (const cs of customs) {
+        const isActive = extension_settings[EXT].setting === `custom:${cs.id}`;
+        $list.append(`
+            <div class="we_cs_card" data-id="${cs.id}">
+                <div class="we_cs_header">
+                    <span class="we_cs_name">${cs.name}</span>
+                    <span class="we_cs_desc_preview">${cs.description.slice(0, 60)}${cs.description.length > 60 ? '…' : ''}</span>
+                </div>
+                <div class="we_cs_actions">
+                    <button class="menu_button we_cs_btn_use ${isActive ? 'we_cs_active' : ''}" data-id="${cs.id}">${isActive ? '✓ Active' : 'Use'}</button>
+                    <button class="menu_button we_cs_btn_export" data-id="${cs.id}">⬇ Export</button>
+                    <button class="menu_button we_cs_btn_delete we_btn_danger" data-id="${cs.id}">✕</button>
+                </div>
+            </div>
+        `);
+    }
+}
+
 function toggleAccordion(bodyId, iconEl) {
-    const $body = $(`#${bodyId}`);
-    const isOpen = $body.is(':visible');
-    $body.slideToggle(150);
-    $(iconEl).toggleClass('we_acc_open', !isOpen);
+    $(`#${bodyId}`).slideToggle(150);
+    $(iconEl).toggleClass('we_acc_open');
 }
 
 function buildUI() {
@@ -1421,8 +1526,10 @@ function buildUI() {
                 </div>
                 <div class="we_accordion_body" id="we_sec_events">
                     <label class="checkbox_label" style="margin-bottom:6px;">
-                        <input type="checkbox" id="we_toggle" />
-                        <span>Enable</span>
+                        <input type="checkbox" id="we_toggle" /><span>Enable</span>
+                    </label>
+                    <label class="checkbox_label" style="margin-bottom:6px;">
+                        <input type="checkbox" id="we_show_badge" /><span>Show widget</span>
                     </label>
 
                     <div class="we_section">
@@ -1433,6 +1540,7 @@ function buildUI() {
                     <div class="we_section we_results">
                         <div class="we_row"><span>Roll</span><span id="we_roll_val">—</span></div>
                         <div class="we_row"><span>Event</span><b id="we_event_val">—</b></div>
+                        <div class="we_row" id="we_category_row" style="display:none;"><span>Category</span><span id="we_category_val">—</span></div>
                         <div class="we_type_row" id="we_type_row" style="display:none;"><span id="we_type_val"></span></div>
                         <div class="we_row"><span>Impact</span><span id="we_impact_val">—</span></div>
                     </div>
@@ -1450,12 +1558,8 @@ function buildUI() {
                     <input type="number" id="we_depth" class="text_pole" min="0" max="100" step="1" />
                     <div style="margin-top:8px;display:flex;gap:6px;">
                         <input type="button" id="we_reset" class="menu_button" value="⟳ Reset Tension" style="flex:1;" />
-                        <input type="button" id="we_reset_counts" class="menu_button" value="⟳ Reset Counts" style="flex:1;" title="Reset event frequency counters for this chat" />
+                        <input type="button" id="we_reset_counts" class="menu_button" value="⟳ Reset Counts" style="flex:1;" />
                     </div>
-                    <label class="checkbox_label" style="margin-top:6px;">
-                        <input type="checkbox" id="we_badge_toggle" />
-                        <span>Show badge in chat</span>
-                    </label>
                 </div>
             </div>
 
@@ -1466,36 +1570,24 @@ function buildUI() {
                     <i class="fa-solid fa-chevron-down we_acc_icon"></i>
                 </div>
                 <div class="we_accordion_body" id="we_sec_custom" style="display:none;">
+                    <div id="we_custom_list" style="margin-bottom:8px;"></div>
 
-                    <label><small>Setting name</small></label>
-                    <input type="text" id="we_cs_name" class="text_pole" placeholder="e.g. Pirate Romance" />
-                    <label><small>Description <span style="opacity:0.55;">(the model uses this to generate events)</span></small></label>
-                    <textarea id="we_cs_desc" class="text_pole" rows="3" placeholder="e.g. A swashbuckling romance set on the high seas in the 17th century. Tension between rival captains, ship crews, port politics, and a slow-burn enemies-to-lovers dynamic."></textarea>
-
-                    <div style="display:flex;gap:6px;margin-top:6px;">
-                        <button id="we_cs_generate" class="menu_button" style="flex:1;">
-                            <i class="fa-solid fa-bolt"></i> Generate
-                        </button>
+                    <div style="display:flex;gap:6px;">
                         <label class="menu_button" style="flex:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;">
                             <i class="fa-solid fa-file-import"></i> Import
                             <input type="file" id="we_cs_import_file" accept=".json" style="display:none;" />
                         </label>
                     </div>
 
-                    <div id="we_cs_status" style="font-size:0.8em;opacity:0.6;margin-top:4px;min-height:1.2em;font-style:italic;"></div>
-
-                    <div id="we_custom_list" style="margin-top:8px;"></div>
-
                     <div style="margin-top:8px;">
                         <label><small>Connection profile</small></label>
                         <div style="display:flex;gap:6px;">
                             <select id="we_profile_select" class="text_pole" style="flex:1;"></select>
-                            <button id="we_profile_refresh" class="menu_button" title="Refresh profiles" style="flex-shrink:0;padding:4px 8px;">
+                            <button id="we_profile_refresh" class="menu_button" title="Refresh" style="flex-shrink:0;padding:4px 8px;">
                                 <i class="fa-solid fa-rotate"></i>
                             </button>
                         </div>
                     </div>
-
                 </div>
             </div>
 
@@ -1515,8 +1607,8 @@ jQuery(async () => {
     }
     const s = extension_settings[EXT];
 
-    // Restore UI state
     $('#we_toggle').prop('checked', s.enabled);
+    $('#we_show_badge').prop('checked', s.showBadge);
     $('#we_label').val(s.label);
     $('#we_step').val(s.step);
     $('#we_depth').val(s.depth);
@@ -1524,172 +1616,85 @@ jQuery(async () => {
     updateUI(s._lastResult || null);
     renderCustomSettingsList();
 
-    // ── Accordion toggles ──
     $(document).on('click', '.we_accordion_header', function () {
         const target = $(this).data('target');
-        const $icon = $(this).find('.we_acc_icon');
-        toggleAccordion(target, $icon[0]);
+        toggleAccordion(target, $(this).find('.we_acc_icon')[0]);
     });
 
-    // ── Events accordion controls ──
-    $('#we_toggle').on('change', function () {
-        s.enabled = this.checked;
-        saveSettingsDebounced();
-        if (!this.checked) setExtensionPrompt(EXT, '', 1, s.depth);
-    });
+    $('#we_toggle').on('change', function () { s.enabled = this.checked; saveSettingsDebounced(); if (!this.checked) setExtensionPrompt(EXT, '', 1, s.depth); });
+    $('#we_show_badge').on('change', function () { s.showBadge = this.checked; saveSettingsDebounced(); if (!this.checked) $('#we_widget').hide(); });
     $('#we_label').on('input', function () { s.label = this.value; saveSettingsDebounced(); });
     $('#we_step').on('input', function () { s.step = parseFloat(this.value) || DEFAULTS.step; saveSettingsDebounced(); });
     $('#we_depth').on('input', function () { s.depth = parseInt(this.value) || DEFAULTS.depth; saveSettingsDebounced(); });
     $('#we_setting').on('change', function () { s.setting = this.value; saveSettingsDebounced(); });
-    $('#we_badge_toggle').prop('checked', s.showBadge !== false);
-    $('#we_badge_toggle').on('change', function () {
-        s.showBadge = this.checked;
-        saveSettingsDebounced();
-        if (this.checked) {
-            updateWidget(s._lastResult || null);
-        } else {
-            $('#we_widget').hide();
-        }
-    });
+
     $('#we_reset').on('click', () => {
-        saveTension(0);
-        updateUI(null);
-        $('#we_roll_val').text('—');
-        $('#we_event_val').text('—').css('color', '');
-        $('#we_impact_val').text('—').css('color', '');
-        $('#we_type_row').hide();
+        saveTension(0); updateUI(null);
+        $('#we_roll_val').text('—'); $('#we_event_val').text('—').css('color', '');
+        $('#we_impact_val').text('—').css('color', ''); $('#we_type_row').hide(); $('#we_category_row').hide();
         toastr.info('Tension reset to 0%');
     });
+    $('#we_reset_counts').on('click', () => { resetEventCounts(); toastr.info('Event frequency counters reset.'); });
 
-    $('#we_reset_counts').on('click', () => {
-        resetEventCounts();
-        toastr.info('Event frequency counters reset.');
-    });
-
-    // ── Connection profile selector ──
+    // ── Connection profiles ──
     function refreshProfileSelect() {
         const profiles = getConnectionProfiles();
         const $sel = $('#we_profile_select');
         $sel.empty();
-        if (!profiles.length) {
-            $sel.append('<option value="">— no profiles found —</option>');
-            return;
-        }
+        if (!profiles.length) { $sel.append('<option value="">— no profiles —</option>'); return; }
         const currentName = s.connectionProfile || getDefaultProfileName();
         for (const p of profiles) {
-            $sel.append(`<option value="${p.name}" ${p.name === currentName ? 'selected' : ''}>${p.name} (${p.api || '?'} / ${p.model || 'no model'})</option>`);
+            $sel.append(`<option value="${p.name}" ${p.name === currentName ? 'selected' : ''}>${p.name} (${p.api || '?'} / ${p.model || '?'})</option>`);
         }
         if (!s.connectionProfile) s.connectionProfile = currentName;
     }
-
     refreshProfileSelect();
     $('#we_profile_select').on('change', function () { s.connectionProfile = this.value; saveSettingsDebounced(); });
-    $('#we_profile_refresh').on('click', () => { refreshProfileSelect(); toastr.info('Profiles refreshed.'); });
+    $('#we_profile_refresh').on('click', () => { refreshProfileSelect(); toastr.info('Refreshed.'); });
 
-    // ── Generate custom setting ──
-    $('#we_cs_generate').on('click', async function () {
-        const name = $('#we_cs_name').val().trim();
-        const desc = $('#we_cs_desc').val().trim();
-
-        if (!name) { toastr.warning('Enter a setting name.'); return; }
-        if (!desc) { toastr.warning('Enter a setting description.'); return; }
-
-        const $btn = $(this);
-        $btn.prop('disabled', true);
-        $('#we_cs_status').text('Generating… this may take a moment.');
-
-        const cs = await generateCustomSetting(name, desc);
-
-        $btn.prop('disabled', false);
-
-        if (!cs) {
-            $('#we_cs_status').text('Generation failed. Check connection profile and console.');
-            return;
-        }
-
-        saveCustomSetting(cs);
-        rebuildSettingDropdown();
-        renderCustomSettingsList();
-        $('#we_cs_status').text(`✓ "${cs.name}" generated and saved.`);
-        $('#we_cs_name').val('');
-        $('#we_cs_desc').val('');
-        toastr.success(`Setting "${cs.name}" created!`);
-    });
-
-    // ── Custom setting list actions (delegated) ──
+    // ── Custom settings list actions ──
     $('#we_custom_list').on('click', '.we_cs_btn_use', function () {
-        const id = $(this).data('id');
-        s.setting = `custom:${id}`;
-        saveSettingsDebounced();
-        rebuildSettingDropdown();
-        renderCustomSettingsList();
-        toastr.info(`Setting activated.`);
+        s.setting = `custom:${$(this).data('id')}`; saveSettingsDebounced();
+        rebuildSettingDropdown(); renderCustomSettingsList(); toastr.info('Setting activated.');
     });
-
     $('#we_custom_list').on('click', '.we_cs_btn_export', function () {
-        const id = $(this).data('id');
-        const cs = getCustomSettingById(id);
+        const cs = getCustomSettingById($(this).data('id'));
         if (!cs) return;
-        const blob = new Blob([JSON.stringify(cs, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = `we_setting_${cs.name.replace(/\s+/g, '_').toLowerCase()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
+        a.href = URL.createObjectURL(new Blob([JSON.stringify(cs, null, 2)], { type: 'application/json' }));
+        a.download = `we_setting_${cs.name.replace(/\s+/g, '_').toLowerCase()}.json`; a.click();
     });
-
     $('#we_custom_list').on('click', '.we_cs_btn_delete', function () {
-        const id = $(this).data('id');
-        const cs = getCustomSettingById(id);
-        if (!cs) return;
-        if (!confirm(`Delete setting "${cs.name}"?`)) return;
-        deleteCustomSetting(id);
-        rebuildSettingDropdown();
-        renderCustomSettingsList();
-        toastr.info(`Setting "${cs.name}" deleted.`);
+        const cs = getCustomSettingById($(this).data('id'));
+        if (!cs || !confirm(`Delete "${cs.name}"?`)) return;
+        deleteCustomSetting(cs.id); rebuildSettingDropdown(); renderCustomSettingsList(); toastr.info(`"${cs.name}" deleted.`);
     });
 
     // ── Import ──
     $('#we_cs_import_file').on('change', function () {
-        const file = this.files[0];
-        if (!file) return;
+        const file = this.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const cs = JSON.parse(e.target.result);
-                // Basic validation
                 if (!cs.id || !cs.name || !cs.events) throw new Error('Invalid format');
-                if (!cs.events.SUBTLE || !cs.events.MINOR || !cs.events.MAJOR) throw new Error('Missing tiers');
-                // Give it a new id to avoid collisions
                 cs.id = `cs_${Date.now()}`;
-                saveCustomSetting(cs);
-                rebuildSettingDropdown();
-                renderCustomSettingsList();
+                saveCustomSetting(cs); rebuildSettingDropdown(); renderCustomSettingsList();
                 toastr.success(`Imported "${cs.name}".`);
-            } catch (err) {
-                toastr.error('Import failed: ' + err.message);
-            }
+            } catch (err) { toastr.error('Import failed: ' + err.message); }
         };
-        reader.readAsText(file);
-        this.value = '';
+        reader.readAsText(file); this.value = '';
     });
 
     // ── ST event hooks ──
     eventSource.on(event_types.MESSAGE_SENT, onMessageSent);
     eventSource.on(event_types.MESSAGE_SWIPED, onMessageSwiped);
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, () => {
-        const s = extension_settings[EXT];
         if (s.showBadge && s._lastResult) updateWidget(s._lastResult);
     });
     eventSource.on(event_types.CHAT_CHANGED, () => {
-        extension_settings[EXT]._lastResult = null;
-        removeBadges();
-        updateUI(null);
-        $('#we_roll_val').text('—');
-        $('#we_event_val').text('—').css('color', '');
-        $('#we_impact_val').text('—').css('color', '');
-        $('#we_type_row').hide();
-        // we_counts live in chatMetadata so they automatically reflect the new chat
+        s._lastResult = null; removeBadges(); updateUI(null);
+        $('#we_roll_val').text('—'); $('#we_event_val').text('—').css('color', '');
+        $('#we_impact_val').text('—').css('color', ''); $('#we_type_row').hide(); $('#we_category_row').hide();
     });
 });
