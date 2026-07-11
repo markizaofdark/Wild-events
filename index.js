@@ -1,10 +1,11 @@
-import { extension_settings, getContext } from '../../../extensions.js';
+import { extension_settings, getContext, saveMetadataDebounced } from '../../../extensions.js';
 import {
     saveSettingsDebounced,
     eventSource,
     event_types,
     setExtensionPrompt,
     getRequestHeaders,
+    chat_metadata,
 } from '../../../../script.js';
 
 const EXT = 'wild-events';
@@ -1023,12 +1024,12 @@ function getCustomSettingById(id) {
 // ── Connection profile helpers ─────────────────────────────
 
 function getConnectionProfiles() {
-    const ctx = SillyTavern.getContext();
+    const ctx = getContext();
     return ctx.extensionSettings?.connectionManager?.profiles || [];
 }
 
 function getDefaultProfileName() {
-    const ctx = SillyTavern.getContext();
+    const ctx = getContext();
     const cm = ctx.extensionSettings?.connectionManager;
     if (!cm) return '';
     return cm.profiles?.find(p => p.id === cm.selectedProfile)?.name || cm.profiles?.[0]?.name || '';
@@ -1195,10 +1196,9 @@ function getCountsKey(scaleId, categoryId, isPositive) {
 }
 
 function getEventCounts() {
-    const ctx = getContext();
-    if (!ctx.chatMetadata) return {};
-    if (!ctx.chatMetadata.we_counts) ctx.chatMetadata.we_counts = {};
-    return ctx.chatMetadata.we_counts;
+    if (chat_metadata == null) return {};
+    if (!chat_metadata.we_counts) chat_metadata.we_counts = {};
+    return chat_metadata.we_counts;
 }
 
 function getCount(key, eventText) {
@@ -1206,19 +1206,17 @@ function getCount(key, eventText) {
 }
 
 function incrementCount(key, eventText) {
-    const ctx = getContext();
-    if (!ctx.chatMetadata) return;
-    if (!ctx.chatMetadata.we_counts) ctx.chatMetadata.we_counts = {};
-    if (!ctx.chatMetadata.we_counts[key]) ctx.chatMetadata.we_counts[key] = {};
-    ctx.chatMetadata.we_counts[key][eventText] = (ctx.chatMetadata.we_counts[key][eventText] ?? 0) + 1;
-    ctx.saveMetadata();
+    if (chat_metadata == null) return;
+    if (!chat_metadata.we_counts) chat_metadata.we_counts = {};
+    if (!chat_metadata.we_counts[key]) chat_metadata.we_counts[key] = {};
+    chat_metadata.we_counts[key][eventText] = (chat_metadata.we_counts[key][eventText] ?? 0) + 1;
+    saveMetadataDebounced();
 }
 
 function resetEventCounts() {
-    const ctx = getContext();
-    if (!ctx.chatMetadata) return;
-    ctx.chatMetadata.we_counts = {};
-    ctx.saveMetadata();
+    if (chat_metadata == null) return;
+    chat_metadata.we_counts = {};
+    saveMetadataDebounced();
 }
 
 function pickEventType(scaleId, categoryId, isPositive) {
@@ -1242,15 +1240,13 @@ function pickEventType(scaleId, categoryId, isPositive) {
 // ── Tension helpers ────────────────────────────────────────
 
 function getTension() {
-    const ctx = getContext();
-    return ctx.chatMetadata?.wild_events_tension ?? 0;
+    return chat_metadata?.wild_events_tension ?? 0;
 }
 
 function saveTension(val) {
-    const ctx = getContext();
-    if (!ctx.chatMetadata) return;
-    ctx.chatMetadata.wild_events_tension = Math.max(0, Math.min(100, val));
-    ctx.saveMetadata();
+    if (chat_metadata == null) return;
+    chat_metadata.wild_events_tension = Math.max(0, Math.min(100, val));
+    saveMetadataDebounced();
 }
 
 // ── Core logic ─────────────────────────────────────────────
@@ -1693,8 +1689,15 @@ jQuery(async () => {
         if (s.showBadge && s._lastResult) updateWidget(s._lastResult);
     });
     eventSource.on(event_types.CHAT_CHANGED, () => {
-        s._lastResult = null; removeBadges(); updateUI(null);
-        $('#we_roll_val').text('—'); $('#we_event_val').text('—').css('color', '');
-        $('#we_impact_val').text('—').css('color', ''); $('#we_type_row').hide(); $('#we_category_row').hide();
+        s._lastResult = null;
+        // Reset panel display to zero immediately (chat_metadata hasn't switched yet)
+        $('#we_tension_val').text('0%');
+        $('#we_tension_bar').css('width', '0%');
+        $('#we_roll_val').text('—');
+        $('#we_event_val').text('—').css('color', '');
+        $('#we_impact_val').text('—').css('color', '');
+        $('#we_type_row').hide();
+        $('#we_category_row').hide();
+        $('#we_widget').hide();
     });
 });
