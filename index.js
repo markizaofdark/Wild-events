@@ -912,14 +912,13 @@ async function callAPI(messages, maxTokens = 8000) {
 const GENERATION_SYSTEM_PROMPT = `You are a creative writing assistant generating narrative event pools for a roleplay randomizer.
 The user describes a setting. You generate event concepts across three tiers (SUBTLE, MINOR, MAJOR) and two polarities (positive, negative).
 
-Each entry is a short narrative direction — a concept the roleplay model will interpret and weave into the scene however fits. The goal is a balance: entries must feel unmistakably like they belong to this setting, but must NOT describe a specific literal outcome or name specific characters, factions, or locations.
+Each entry is a short narrative direction that the roleplay model will interpret and weave into the scene. Use the setting's vocabulary, factions, locations, institutions, and themes freely — that's what makes the events feel grounded. The only rule: do NOT use specific character names, and do NOT describe a specific outcome (who wins, who dies, what exactly happens). Give a direction, not a result.
 
-The key distinction is between WHAT HAPPENS and WHAT KIND OF THING HAPPENS:
-- Too literal (bad): "A Separatist dreadnought is destroyed, turning the tide of the sector war" — this is a scene, not a direction
-- Too vague (bad): "something unexpected happens that changes the situation" — this has no setting flavor at all
-- Correct: "a military asset believed to be secure turns out to have already been compromised" — setting-flavored, no named outcome
-
-Use the setting's vocabulary, themes, relationships, and tensions — but keep the entry open enough that the roleplay model decides exactly who, what, and how. Think: what KINDS of things happen in this world, not what specific thing happens right now.
+Examples for a Star Wars Clone Wars setting:
+- Bad (named character + specific outcome): "Anakin destroys the Separatist flagship and saves the fleet"
+- Good (setting elements, open direction): "a Jedi's connection to the Force is tested by an encounter with the dark side"
+- Good: "a clone unit's loyalty is pulled in two directions by conflicting orders"
+- Good: "something within the Jedi Temple is discovered to be not what it appeared"
 
 Return ONLY valid JSON. No markdown, no backticks, no explanation.`;
 
@@ -943,20 +942,20 @@ Generate event concepts for this setting. Return a JSON object with exactly this
 }
 
 Tier definitions:
-- SUBTLE: a barely noticeable shift — atmosphere, mood, a dynamic between people, a sensory detail that feels off or right
+- SUBTLE: a barely noticeable shift — atmosphere, mood, a sensory detail, a small dynamic between people that could mean nothing or everything
 - MINOR: a clear development — something changes, an opportunity opens or closes, a tension surfaces or eases
-- MAJOR: a significant turning point — a power shift, a truth revealed, a crisis that breaks open or resolves
+- MAJOR: a significant turning point — a power shift, a revelation, a crisis that breaks open or resolves
 
 Polarity:
 - positive: moves toward opportunity, relief, connection, clarity, or resolution
 - negative: moves toward complication, danger, loss, exposure, or tension
 
-Rules for each entry:
+Rules:
 - lowercase, no period at the end
-- uses the setting's vocabulary and themes (powers, relationships, institutions, conflicts specific to this world)
-- does NOT name specific characters, factions, or locations — those belong to the actual story
-- does NOT describe the outcome — describes the KIND of thing that happens, leaving who/how open
-- distinct from the other 14 entries in its tier/polarity
+- use the setting's factions, locations, institutions, powers, and themes freely
+- do NOT use specific character names
+- do NOT describe a specific outcome — give a direction that the story can take in multiple ways
+- all 15 entries per tier/polarity must be distinct
 
 Return only the JSON object.`;
 }
