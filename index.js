@@ -1001,59 +1001,94 @@ async function generateCustomSetting(name, description) {
 // ── Chat badge ─────────────────────────────────────────────
 
 function injectBadge(result) {
-    const s = extension_settings[EXT];
-    if (!s.showBadge || !result || result.event.id === 'NONE') return;
-
-    // Find last bot message element
-    const $allMes = $('#chat .mes');
-    let $target = null;
-    for (let i = $allMes.length - 1; i >= 0; i--) {
-        const $m = $($allMes[i]);
-        if ($m.attr('is_user') !== 'true') { $target = $m; break; }
-    }
-    if (!$target || !$target.length) return;
-
-    $target.find('.we_chat_badge').remove();
-
-    const isPos = result.isPositive;
-    const shortName = result.event.name
-        .replace(' PLOT TWIST', '')
-        .replace(' CHANGE', '');
-    const arrow = isPos ? '▲' : '▼';
-    const shortLabel = `${arrow} ${shortName}`;
-    const settingLabel = getActiveSettingLabel();
-    const eventType = result.eventType || '';
-    const fullText = [settingLabel ? `[${settingLabel}]` : '', eventType]
-        .filter(Boolean).join(' · ');
-
-    const colorClass = isPos ? 'we_badge_pos' : 'we_badge_neg';
-
-    const $badge = $(`<div class="we_chat_badge ${colorClass}" data-open="false">` +
-        `<span class="we_badge_label"><span class="we_badge_arrow">${arrow}</span> ${shortName}</span>` +
-        (fullText ? `<span class="we_badge_sep"> · </span><span class="we_badge_full">${fullText}</span>` : '') +
-        `<span class="we_badge_toggle">▸</span>` +
-        `</div>`);
-
-    $badge.find('.we_badge_full, .we_badge_sep').hide();
-    $badge.find('.we_badge_toggle').text('▸');
-
-    $badge.on('click', function() {
-        const isOpen = $(this).attr('data-open') === 'true';
-        $(this).attr('data-open', String(!isOpen));
-        $(this).find('.we_badge_full, .we_badge_sep').toggle(!isOpen);
-        $(this).find('.we_badge_toggle').text(isOpen ? '▸' : '▾');
-    });
-
-    const $mesBlock = $target.find('.mes_block');
-    if ($mesBlock.length) {
-        $badge.insertBefore($mesBlock);
-    } else {
-        $target.prepend($badge);
-    }
+    updateWidget(result);
 }
 
 function removeBadges() {
-    $('.we_chat_badge').remove();
+    updateWidget(null);
+}
+
+// ── Floating widget ────────────────────────────────────────
+
+function ensureWidget() {
+    if ($('#we_widget').length) return;
+
+    const $widget = $(`
+        <div id="we_widget" style="display:none;">
+            <button id="we_fab" aria-label="Wild Events">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+                </svg>
+                <span id="we_fab_dot"></span>
+            </button>
+            <div id="we_popup" style="display:none;">
+                <div id="we_pop_tier"></div>
+                <div id="we_pop_impact"></div>
+                <div id="we_pop_event"></div>
+                <div id="we_pop_setting" style="display:none;"></div>
+                <div id="we_pop_tension">
+                    <span id="we_pop_tension_label">Tension</span>
+                    <div id="we_pop_bar_bg"><div id="we_pop_bar_fill"></div></div>
+                    <span id="we_pop_tension_val"></span>
+                </div>
+            </div>
+        </div>
+    `);
+
+    $('body').append($widget);
+
+    // Toggle popup on fab click
+    $('#we_fab').on('click', function(e) {
+        e.stopPropagation();
+        const $popup = $('#we_popup');
+        $popup.is(':visible') ? $popup.hide() : $popup.show();
+    });
+
+    // Close on outside click
+    $(document).on('click.we_widget', function(e) {
+        if (!$(e.target).closest('#we_widget').length) {
+            $('#we_popup').hide();
+        }
+    });
+}
+
+function updateWidget(result) {
+    const s = extension_settings[EXT];
+    if (!s.showBadge) {
+        $('#we_widget').hide();
+        return;
+    }
+
+    ensureWidget();
+
+    if (!result || result.event.id === 'NONE') {
+        $('#we_widget').hide();
+        return;
+    }
+
+    const isPos = result.isPositive;
+    const tierName = result.event.name;
+    const eventType = result.eventType || '';
+    const settingLabel = getActiveSettingLabel();
+    const tension = result.tension ?? getTension();
+
+    $('#we_fab_dot').attr('class', isPos ? 'we_dot_pos' : 'we_dot_neg');
+    $('#we_pop_tier').text(tierName);
+    $('#we_pop_impact').html(
+        `<span class="${isPos ? 'we_pop_arrow_pos' : 'we_pop_arrow_neg'}">${isPos ? '▲' : '▼'}</span> ${isPos ? 'Positive' : 'Negative'}`
+    );
+    $('#we_pop_event').text(eventType);
+
+    if (settingLabel) {
+        $('#we_pop_setting').text(settingLabel).show();
+    } else {
+        $('#we_pop_setting').hide();
+    }
+
+    $('#we_pop_tension_val').text(`${tension.toFixed(1)}%`);
+    $('#we_pop_bar_fill').css('width', `${Math.min(100, tension)}%`);
+
+    $('#we_widget').show();
 }
 
 // ── Pool builder (updated to support custom settings) ──────
@@ -1437,7 +1472,11 @@ jQuery(async () => {
     $('#we_badge_toggle').on('change', function () {
         s.showBadge = this.checked;
         saveSettingsDebounced();
-        if (!this.checked) removeBadges();
+        if (this.checked) {
+            updateWidget(s._lastResult || null);
+        } else {
+            $('#we_widget').hide();
+        }
     });
     $('#we_reset').on('click', () => {
         saveTension(0);
@@ -1563,7 +1602,7 @@ jQuery(async () => {
     eventSource.on(event_types.MESSAGE_SWIPED, onMessageSwiped);
     eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, () => {
         const s = extension_settings[EXT];
-        if (s.showBadge && s._lastResult) injectBadge(s._lastResult);
+        if (s.showBadge && s._lastResult) updateWidget(s._lastResult);
     });
     eventSource.on(event_types.CHAT_CHANGED, () => {
         extension_settings[EXT]._lastResult = null;

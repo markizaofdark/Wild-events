@@ -194,74 +194,135 @@
     margin-bottom: 2px;
 }
 
-/* ── Chat badge ─────────────────────────────────────────── */
+/* ── Floating widget ────────────────────────────────────── */
 
-.we_chat_badge {
-    display: inline-flex;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 0;
-    font-family: var(--mainFontFamily, inherit);
-    font-size: 0.75em;
-    line-height: 1;
-    padding: 3px 7px 3px 6px;
-    border-radius: 3px;
-    margin: 4px 12px 2px 12px;
+#we_widget {
+    position: fixed;
+    top: 60px;
+    right: 14px;
+    z-index: 9999;
+    font-family: var(--mainFontFamily, var(--font-sans, sans-serif));
+}
+
+#we_fab {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,0.3));
+    background: var(--SmartThemeBlurTintColor, var(--SmartThemeChatTintColor, rgba(0,0,0,0.45)));
+    color: var(--SmartThemeBodyColor, #ccc);
     cursor: pointer;
-    user-select: none;
-    max-width: calc(100% - 24px);
-    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 0;
     transition: opacity 0.15s;
-    border-left: 2px solid var(--SmartThemeBorderColor, color-mix(in srgb, var(--SmartThemeBodyColor) 20%, transparent));
-    background-color: color-mix(in srgb, var(--SmartThemeBodyColor) 6%, transparent);
-    color: var(--SmartThemeBodyColor);
+}
+
+#we_fab:hover {
+    opacity: 0.8;
+}
+
+#we_fab_dot {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1.5px solid var(--SmartThemeBlurTintColor, rgba(0,0,0,0.45));
+}
+
+.we_dot_pos { background: #66bb6a; }
+.we_dot_neg { background: #ef5350; }
+
+#we_popup {
+    position: absolute;
+    top: 42px;
+    right: 0;
+    width: 230px;
+    background: var(--SmartThemeBlurTintColor, var(--SmartThemeChatTintColor, rgba(20,20,30,0.95)));
+    border: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,0.25));
+    border-radius: 10px;
+    padding: 11px 13px;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+#we_pop_tier {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--SmartThemeBodyColor, #ccc);
+    opacity: 0.45;
+    margin-bottom: 3px;
+}
+
+#we_pop_impact {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--SmartThemeBodyColor, #ccc);
+    margin-bottom: 7px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.we_pop_arrow_pos { color: #66bb6a; }
+.we_pop_arrow_neg { color: #ef5350; }
+
+#we_pop_event {
+    font-size: 12px;
+    color: var(--SmartThemeBodyColor, #ccc);
+    opacity: 0.75;
+    line-height: 1.5;
+    padding-top: 7px;
+    border-top: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,0.2));
+    margin-bottom: 6px;
+}
+
+#we_pop_setting {
+    font-size: 10px;
+    color: var(--SmartThemeBodyColor, #ccc);
+    opacity: 0.4;
+    margin-bottom: 6px;
+    font-style: italic;
+}
+
+#we_pop_tension {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 4px;
+}
+
+#we_pop_tension_label {
+    font-size: 10px;
+    color: var(--SmartThemeBodyColor, #ccc);
+    opacity: 0.4;
+    white-space: nowrap;
+}
+
+#we_pop_bar_bg {
+    flex: 1;
+    height: 3px;
+    background: var(--SmartThemeBorderColor, rgba(128,128,128,0.2));
+    border-radius: 2px;
     overflow: hidden;
 }
 
-.we_chat_badge:hover {
-    background-color: color-mix(in srgb, var(--SmartThemeBodyColor) 10%, transparent);
+#we_pop_bar_fill {
+    height: 100%;
+    background: linear-gradient(90deg, #66bb6a, #ffa726, #ef5350);
+    border-radius: 2px;
+    transition: width 0.3s ease;
 }
 
-.we_badge_pos .we_badge_arrow {
-    color: #66bb6a;
-    font-weight: 700;
-}
-
-.we_badge_neg .we_badge_arrow {
-    color: #ef5350;
-    font-weight: 700;
-}
-
-.we_badge_label {
-    letter-spacing: 0.03em;
+#we_pop_tension_val {
+    font-size: 10px;
+    color: var(--SmartThemeBodyColor, #ccc);
+    opacity: 0.4;
     white-space: nowrap;
-    flex-shrink: 0;
-    opacity: 0.9;
-}
-
-.we_badge_sep {
-    opacity: 0.35;
-    flex-shrink: 0;
-}
-
-.we_badge_full {
-    opacity: 0.75;
-    white-space: normal;
-    word-break: break-word;
-    min-width: 0;
-    display: block;
-    margin-top: 2px;
-}
-
-.we_badge_toggle {
-    margin-left: 5px;
-    opacity: 0.35;
-    flex-shrink: 0;
-    font-size: 0.9em;
-}
-
-/* Collapsed state */
-.we_chat_badge[data-open="false"] .we_badge_full,
-.we_chat_badge[data-open="false"] .we_badge_sep {
-    display: none;
 }
