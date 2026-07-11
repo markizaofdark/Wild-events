@@ -231,11 +231,14 @@
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    border: 1.5px solid var(--SmartThemeBlurTintColor, rgba(0,0,0,0.45));
+    background: transparent;
+    border: 2px solid transparent;
+    transition: border-color 0.2s ease;
 }
 
-.we_dot_pos { background: #66bb6a; }
-.we_dot_neg { background: #ef5350; }
+.we_dot_pos  { border-color: #66bb6a; }
+.we_dot_neg  { border-color: #ef5350; }
+.we_dot_none { border-color: color-mix(in srgb, var(--SmartThemeBodyColor) 55%, transparent); }
 
 #we_popup {
     position: absolute;
@@ -325,4 +328,27 @@
     color: var(--SmartThemeBodyColor, #ccc);
     opacity: 0.4;
     white-space: nowrap;
+}
+
+/* ── Blueberry icon — theme-adaptive ───────────────────── */
+
+.we_fab_berry {
+    font-size: 17px;
+    line-height: 1;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    /* desaturate the emoji */
+    filter: grayscale(1) brightness(10) contrast(0.12);
+}
+
+.we_fab_berry::after {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    background: var(--SmartThemeBodyColor, #cccccc);
+    mix-blend-mode: multiply;
+    border-radius: 3px;
+    pointer-events: none;
 }

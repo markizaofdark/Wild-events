@@ -1033,9 +1033,7 @@ function ensureWidget() {
     const $widget = $(`
         <div id="we_widget" style="display:none;">
             <button id="we_fab" aria-label="Wild Events">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-                    <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
-                </svg>
+                <div class="we_fab_berry">🫐</div>
                 <span id="we_fab_dot"></span>
             </button>
             <div id="we_popup" style="display:none;">
@@ -1078,8 +1076,18 @@ function updateWidget(result) {
 
     ensureWidget();
 
-    if (!result || result.event.id === 'NONE') {
-        $('#we_widget').hide();
+    const isNone = !result || result.event.id === 'NONE';
+
+    if (isNone) {
+        const tension = result?.tension ?? getTension();
+        $('#we_fab_dot').attr('class', 'we_dot_none');
+        $('#we_pop_tier').text('NO CHANGE');
+        $('#we_pop_impact').html('<span style="opacity:0.4">—</span>');
+        $('#we_pop_event').text('Story continues naturally.');
+        $('#we_pop_setting').hide();
+        $('#we_pop_tension_val').text(`${tension.toFixed(1)}%`);
+        $('#we_pop_bar_fill').css('width', `${Math.min(100, tension)}%`);
+        $('#we_widget').show();
         return;
     }
 
