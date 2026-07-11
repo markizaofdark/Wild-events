@@ -1033,16 +1033,7 @@ function ensureWidget() {
     const $widget = $(`
         <div id="we_widget" style="display:none;">
             <button id="we_fab" aria-label="Wild Events">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-                    <!-- stick -->
-                    <line x1="12" y1="7" x2="12" y2="13"/>
-                    <circle cx="12" cy="5.5" r="1.8" fill="currentColor" stroke="none"/>
-                    <!-- base -->
-                    <rect x="4" y="13" width="16" height="6" rx="3"/>
-                    <!-- buttons -->
-                    <circle cx="17" cy="16" r="1.2" fill="currentColor" stroke="none"/>
-                    <circle cx="14" cy="16" r="1.2" fill="currentColor" stroke="none"/>
-                </svg>
+                <i class="fa-solid fa-dice-d6" style="font-size:16px;pointer-events:none;"></i>
                 <span id="we_fab_dot"></span>
             </button>
             <div id="we_popup" style="display:none;">
