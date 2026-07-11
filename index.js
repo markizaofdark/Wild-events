@@ -18,7 +18,8 @@ const DEFAULTS = {
     depth: 0,
     setting: 'none',
     connectionProfile: '',
-    customSettings: {},   // { [id]: { id, name, description, events: { SUBTLE:{positive:[],negative:[]}, MINOR:…, MAJOR:… } } }
+    customSettings: {},
+    showBadge: true,
 };
 
 const EVENTS = [
@@ -786,6 +787,62 @@ const SETTING_EVENTS = {
     },
 };
 
+
+// ── Chat badge ─────────────────────────────────────────────
+
+function injectBadge(result) {
+    const s = extension_settings[EXT];
+    if (!s.showBadge || !result || result.event.id === 'NONE') return;
+
+    // Find last bot message element
+    const $allMes = $('#chat .mes');
+    let $target = null;
+    for (let i = $allMes.length - 1; i >= 0; i--) {
+        const $m = $($allMes[i]);
+        if ($m.attr('is_user') !== 'true') { $target = $m; break; }
+    }
+    if (!$target || !$target.length) return;
+
+    $target.find('.we_chat_badge').remove();
+
+    const isPos = result.isPositive;
+    const shortName = result.event.name
+        .replace(' PLOT TWIST', '')
+        .replace(' CHANGE', '');
+    const arrow = isPos ? '▲' : '▼';
+    const shortLabel = `${arrow} ${shortName}`;
+    const settingLabel = getActiveSettingLabel();
+    const eventType = result.eventType || '';
+    const fullText = [settingLabel ? `[${settingLabel}]` : '', eventType]
+        .filter(Boolean).join(' · ');
+
+    const colorClass = isPos ? 'we_badge_pos' : 'we_badge_neg';
+
+    const $badge = $(`<div class="we_chat_badge ${colorClass}" data-open="true">` +
+        `<span class="we_badge_label">${shortLabel}</span>` +
+        (fullText ? `<span class="we_badge_sep"> · </span><span class="we_badge_full">${fullText}</span>` : '') +
+        `<span class="we_badge_toggle">▾</span>` +
+        `</div>`);
+
+    $badge.on('click', function() {
+        const isOpen = $(this).attr('data-open') === 'true';
+        $(this).attr('data-open', String(!isOpen));
+        $(this).find('.we_badge_full, .we_badge_sep').toggle(isOpen ? false : true);
+        $(this).find('.we_badge_toggle').text(isOpen ? '▸' : '▾');
+    });
+
+    const $mesBlock = $target.find('.mes_block');
+    if ($mesBlock.length) {
+        $badge.insertBefore($mesBlock);
+    } else {
+        $target.prepend($badge);
+    }
+}
+
+function removeBadges() {
+    $('.we_chat_badge').remove();
+}
+
 // ── Pool builder ───────────────────────────────────────────
 
 
@@ -995,6 +1052,62 @@ async function generateCustomSetting(name, description) {
     return { id, name, description, events };
 }
 
+
+// ── Chat badge ─────────────────────────────────────────────
+
+function injectBadge(result) {
+    const s = extension_settings[EXT];
+    if (!s.showBadge || !result || result.event.id === 'NONE') return;
+
+    // Find last bot message element
+    const $allMes = $('#chat .mes');
+    let $target = null;
+    for (let i = $allMes.length - 1; i >= 0; i--) {
+        const $m = $($allMes[i]);
+        if ($m.attr('is_user') !== 'true') { $target = $m; break; }
+    }
+    if (!$target || !$target.length) return;
+
+    $target.find('.we_chat_badge').remove();
+
+    const isPos = result.isPositive;
+    const shortName = result.event.name
+        .replace(' PLOT TWIST', '')
+        .replace(' CHANGE', '');
+    const arrow = isPos ? '▲' : '▼';
+    const shortLabel = `${arrow} ${shortName}`;
+    const settingLabel = getActiveSettingLabel();
+    const eventType = result.eventType || '';
+    const fullText = [settingLabel ? `[${settingLabel}]` : '', eventType]
+        .filter(Boolean).join(' · ');
+
+    const colorClass = isPos ? 'we_badge_pos' : 'we_badge_neg';
+
+    const $badge = $(`<div class="we_chat_badge ${colorClass}" data-open="true">` +
+        `<span class="we_badge_label">${shortLabel}</span>` +
+        (fullText ? `<span class="we_badge_sep"> · </span><span class="we_badge_full">${fullText}</span>` : '') +
+        `<span class="we_badge_toggle">▾</span>` +
+        `</div>`);
+
+    $badge.on('click', function() {
+        const isOpen = $(this).attr('data-open') === 'true';
+        $(this).attr('data-open', String(!isOpen));
+        $(this).find('.we_badge_full, .we_badge_sep').toggle(isOpen ? false : true);
+        $(this).find('.we_badge_toggle').text(isOpen ? '▸' : '▾');
+    });
+
+    const $mesBlock = $target.find('.mes_block');
+    if ($mesBlock.length) {
+        $badge.insertBefore($mesBlock);
+    } else {
+        $target.prepend($badge);
+    }
+}
+
+function removeBadges() {
+    $('.we_chat_badge').remove();
+}
+
 // ── Pool builder (updated to support custom settings) ──────
 
 function buildPool(scaleId, isPositive) {
@@ -1128,6 +1241,7 @@ function runEvent(isNewMessage) {
     saveSettingsDebounced();
 
     updateUI(result);
+    if (isNewMessage) injectBadge(result);
 }
 
 // ── Generation hooks ───────────────────────────────────────
@@ -1282,6 +1396,10 @@ function buildUI() {
                     <div style="margin-top:8px;">
                         <input type="button" id="we_reset" class="menu_button" value="⟳ Reset Tension" style="width:100%;" />
                     </div>
+                    <label class="checkbox_label" style="margin-top:6px;">
+                        <input type="checkbox" id="we_badge_toggle" />
+                        <span>Show badge in chat</span>
+                    </label>
                 </div>
             </div>
 
@@ -1367,6 +1485,12 @@ jQuery(async () => {
     $('#we_step').on('input', function () { s.step = parseFloat(this.value) || DEFAULTS.step; saveSettingsDebounced(); });
     $('#we_depth').on('input', function () { s.depth = parseInt(this.value) || DEFAULTS.depth; saveSettingsDebounced(); });
     $('#we_setting').on('change', function () { s.setting = this.value; saveSettingsDebounced(); });
+    $('#we_badge_toggle').prop('checked', s.showBadge !== false);
+    $('#we_badge_toggle').on('change', function () {
+        s.showBadge = this.checked;
+        saveSettingsDebounced();
+        if (!this.checked) removeBadges();
+    });
     $('#we_reset').on('click', () => {
         saveTension(0);
         updateUI(null);
@@ -1489,8 +1613,13 @@ jQuery(async () => {
     // ── ST event hooks ──
     eventSource.on(event_types.MESSAGE_SENT, onMessageSent);
     eventSource.on(event_types.MESSAGE_SWIPED, onMessageSwiped);
+    eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, () => {
+        const s = extension_settings[EXT];
+        if (s.showBadge && s._lastResult) injectBadge(s._lastResult);
+    });
     eventSource.on(event_types.CHAT_CHANGED, () => {
         extension_settings[EXT]._lastResult = null;
+        removeBadges();
         updateUI(null);
         $('#we_roll_val').text('—');
         $('#we_event_val').text('—').css('color', '');
