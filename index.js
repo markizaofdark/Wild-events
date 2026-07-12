@@ -1153,14 +1153,33 @@ async function generateCustomSetting(name, description) {
 
 // ── Category selection (weighted random) ───────────────────
 
+function getCategoryCount(categoryId) {
+    const ctx = getContext();
+    return ctx.chatMetadata?.we_cat_counts?.[categoryId] ?? 0;
+}
+
+function incrementCategoryCount(categoryId) {
+    const ctx = getContext();
+    if (!ctx.chatMetadata) return;
+    if (!ctx.chatMetadata.we_cat_counts) ctx.chatMetadata.we_cat_counts = {};
+    ctx.chatMetadata.we_cat_counts[categoryId] = (ctx.chatMetadata.we_cat_counts[categoryId] ?? 0) + 1;
+    ctx.saveMetadata();
+}
+
 function pickCategory() {
-    const total = CATEGORIES.reduce((a, c) => a + c.weight, 0);
+    // Base weight dampened by category frequency: weight / (1 + count * 0.5)
+    // Softer than event anti-repeat (0.5 factor vs 1.0), so base weights still dominate
+    const weighted = CATEGORIES.map(c => ({
+        cat: c,
+        w: c.weight / (1 + getCategoryCount(c.id) * 0.5),
+    }));
+    const total = weighted.reduce((a, x) => a + x.w, 0);
     let rand = Math.random() * total;
-    for (const cat of CATEGORIES) {
-        rand -= cat.weight;
-        if (rand <= 0) return cat;
+    for (const x of weighted) {
+        rand -= x.w;
+        if (rand <= 0) return x.cat;
     }
-    return CATEGORIES[0];
+    return weighted[weighted.length - 1].cat;
 }
 
 // ── Pool builder ───────────────────────────────────────────
@@ -1221,6 +1240,7 @@ function resetEventCounts() {
     const ctx = getContext();
     if (!ctx.chatMetadata) return;
     ctx.chatMetadata.we_counts = {};
+    ctx.chatMetadata.we_cat_counts = {};
     ctx.saveMetadata();
 }
 
@@ -1324,6 +1344,7 @@ function runEvent(isNewMessage) {
     }
 
     const category = pickCategory();
+    incrementCategoryCount(category.id);
     const eventType = pickEventType(scale.id, category.id, isPositive);
     const result = { tension: getTension(), baseRoll, modifier, finalScore, isPositive, scale, category, forced, eventType };
     const prompt = formatPrompt(result);
