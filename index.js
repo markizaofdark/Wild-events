@@ -2262,6 +2262,15 @@ function removeBadges() { updateWidget(null); }
 
 // ── Floating widget ────────────────────────────────────────
 
+function applyWidgetPosition() {
+    const s = extension_settings[EXT];
+    const $w = $('#we_widget');
+    if (!$w.length) return;
+    if (s.widgetX != null && s.widgetY != null) {
+        $w.css({ top: s.widgetY + 'px', right: 'auto', left: s.widgetX + 'px' });
+    }
+}
+
 function ensureWidget() {
     if ($('#we_widget').length) return;
 
@@ -2292,10 +2301,84 @@ function ensureWidget() {
     `);
 
     $('body').append($widget);
+    applyWidgetPosition();
+
+    // ── Drag-to-move (hold 500ms then drag) ──
+    let holdTimer = null;
+    let isDragging = false;
+    let wasDragging = false;
+    let dragOffset = { x: 0, y: 0 };
+
+    function onPointerDown(e) {
+        if (e.button && e.button !== 0) return;
+        const px = e.clientX ?? e.touches?.[0]?.clientX;
+        const py = e.clientY ?? e.touches?.[0]?.clientY;
+        const rect = $widget[0].getBoundingClientRect();
+        dragOffset = { x: px - rect.left, y: py - rect.top };
+
+        holdTimer = setTimeout(() => {
+            isDragging = true;
+            $widget.addClass('we_dragging');
+            $('#we_popup').hide();
+        }, 500);
+    }
+
+    function onPointerMove(e) {
+        if (!isDragging) {
+            const px = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+            const py = e.clientY ?? e.touches?.[0]?.clientY ?? 0;
+            const rect = $widget[0].getBoundingClientRect();
+            const dx = px - (rect.left + dragOffset.x);
+            const dy = py - (rect.top + dragOffset.y);
+            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) clearTimeout(holdTimer);
+            return;
+        }
+        e.preventDefault();
+        const px = e.clientX ?? e.touches?.[0]?.clientX;
+        const py = e.clientY ?? e.touches?.[0]?.clientY;
+        const x = Math.max(0, Math.min(window.innerWidth - 36, px - dragOffset.x));
+        const y = Math.max(0, Math.min(window.innerHeight - 36, py - dragOffset.y));
+        $widget.css({ left: x + 'px', top: y + 'px', right: 'auto' });
+    }
+
+    function onPointerUp() {
+        clearTimeout(holdTimer);
+        if (isDragging) {
+            isDragging = false;
+            wasDragging = true;
+            setTimeout(() => { wasDragging = false; }, 50);
+            $widget.removeClass('we_dragging');
+            const s = extension_settings[EXT];
+            s.widgetX = parseInt($widget.css('left'));
+            s.widgetY = parseInt($widget.css('top'));
+            saveSettingsDebounced();
+        }
+    }
+
+    const fab = $('#we_fab')[0];
+    fab.addEventListener('mousedown', onPointerDown);
+    fab.addEventListener('touchstart', onPointerDown, { passive: true });
+    document.addEventListener('mousemove', onPointerMove);
+    document.addEventListener('touchmove', onPointerMove, { passive: false });
+    document.addEventListener('mouseup', onPointerUp);
+    document.addEventListener('touchend', onPointerUp);
+
     $('#we_fab').on('click', function(e) {
+        if (isDragging || wasDragging) return;
         e.stopPropagation();
         const $popup = $('#we_popup');
-        $popup.is(':visible') ? $popup.hide() : $popup.show();
+        if ($popup.is(':visible')) {
+            $popup.hide();
+        } else {
+            const rect = $widget[0].getBoundingClientRect();
+            const spaceRight = window.innerWidth - rect.right;
+            if (spaceRight < 240) {
+                $popup.css({ right: '0', left: 'auto' });
+            } else {
+                $popup.css({ left: '0', right: 'auto' });
+            }
+            $popup.show();
+        }
     });
     $(document).on('click.we_widget', function(e) {
         if (!$(e.target).closest('#we_widget').length) $('#we_popup').hide();

@@ -142,6 +142,15 @@
     opacity: 0.8;
 }
 
+#we_widget.we_dragging {
+    opacity: 0.7;
+    z-index: 99999;
+}
+
+#we_widget.we_dragging #we_fab {
+    cursor: grabbing;
+}
+
 #we_fab_dot {
     position: absolute;
     top: 2px;
