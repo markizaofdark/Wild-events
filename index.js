@@ -13,7 +13,7 @@ const DEFAULTS = {
     enabled: true,
     mode: 'full',       // 'full' = detailed events+branches, 'prompt' = minimal prompt-based
     step: 0.5,
-    promptStep: 1,      // tension step for prompt mode (default +1% per message)
+    promptStep: 0.5,     // tension step for prompt mode (default +0.5% per message)
     label: 'WILD EVENTS',
     depth: 0,
     showBadge: true,
@@ -22,11 +22,11 @@ const DEFAULTS = {
 
 // ── Prompt-mode scale tiers (from the original prompt) ────
 const PROMPT_SCALES = [
-    { min: 1,  max: 14, id: 'NONE',        name: 'NO CHANGE' },
-    { min: 15, max: 19, id: 'SUBTLE',      name: 'SUBTLE CHANGE' },
-    { min: 20, max: 24, id: 'MINOR',       name: 'MINOR PLOT TWIST' },
-    { min: 25, max: 27, id: 'MAJOR',       name: 'MAJOR PLOT TWIST' },
-    { min: 28, max: 99, id: 'GIANT',       name: 'GIANT PLOT TWIST' },
+    { min: 1,  max: 10, id: 'NONE',        name: 'NO CHANGE',        adj: null },
+    { min: 11, max: 14, id: 'SUBTLE',      name: 'SUBTLE CHANGE',    adj: null },
+    { min: 15, max: 19, id: 'MINOR',       name: 'MINOR PLOT TWIST', adj: null },
+    { min: 20, max: 24, id: 'MAJOR',       name: 'MAJOR PLOT TWIST', adj: 'reduce25' },
+    { min: 25, max: 99, id: 'GIANT',       name: 'GIANT PLOT TWIST', adj: 'reset' },
 ];
 
 // ── Scale tiers ────────────────────────────────────────────
@@ -2123,16 +2123,17 @@ function runEventPromptMode(isNewMessage) {
     let forced = false;
 
     baseRoll = Math.floor(Math.random() * 20) + 1;
-    modifier = Math.floor(tension / 10);
+    modifier = Math.floor(tension / 8);
     isPositive = baseRoll % 2 === 0;
 
-    if (tension >= 100) { forced = true; finalScore = 28; }
+    if (tension >= 100) { forced = true; finalScore = 25; }
     else { finalScore = baseRoll + modifier; }
 
     scale = findPromptScale(finalScore);
 
-    if (isNewMessage && scale.id === 'GIANT') {
-        saveTension(0);
+    if (isNewMessage) {
+        if (scale.adj === 'reset') saveTension(0);
+        else if (scale.adj === 'reduce25') saveTension(tension * 0.75);
     }
 
     const result = {
