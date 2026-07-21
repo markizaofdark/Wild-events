@@ -53,6 +53,66 @@
     font-style: italic;
 }
 
+/* ── Engine segmented control ───────────────────────────── */
+
+.we_seg {
+    display: flex;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 3px 0 5px 0;
+    border: 1px solid var(--SmartThemeBorderColor, rgba(128, 128, 128, 0.3));
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+/* flex-basis 0 + min-width 0 so both halves are equal regardless of label
+   length, and !important because ST styles bare <button> globally */
+.we_seg_btn {
+    flex: 1 1 0 !important;
+    min-width: 0;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 7px 10px !important;
+    font: inherit;
+    font-size: 0.9em;
+    line-height: 1.3;
+    text-align: center;
+    background: transparent;
+    color: var(--SmartThemeBodyColor, #ccc);
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none;
+    appearance: none;
+    cursor: pointer;
+    opacity: 0.55;
+    transition: background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.we_seg_btn + .we_seg_btn {
+    border-left: 1px solid var(--SmartThemeBorderColor, rgba(128, 128, 128, 0.3)) !important;
+}
+
+.we_seg_btn:hover:not(.we_seg_active) {
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 8%, transparent);
+    opacity: 0.85;
+}
+
+/* Active: tinted with the theme's accent, but the label stays body-coloured so
+   contrast holds on both light and dark themes */
+.we_seg_btn.we_seg_active {
+    background: color-mix(in srgb, var(--SmartThemeQuoteColor, #6c8cd5) 20%, transparent);
+    box-shadow: inset 0 -2px 0 var(--SmartThemeQuoteColor, #6c8cd5);
+    opacity: 1;
+    font-weight: 600;
+}
+
+.we_hint {
+    font-size: 0.78em;
+    opacity: 0.5;
+    line-height: 1.35;
+    margin-bottom: 4px;
+}
+
 /* ── Accordion ──────────────────────────────────────────── */
 
 .we_accordion {

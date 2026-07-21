@@ -3154,8 +3154,8 @@ function buildUI() {
 
                     <label style="margin-top:4px;"><small>Engine</small></label>
                     <div class="we_seg">
-                        <button class="we_seg_btn" data-engine="default" title="Curated event pools, scene modes and story threads">Default</button>
-                        <button class="we_seg_btn" data-engine="lite" title="Only the tier and impact are injected — the model invents the event">Lite</button>
+                        <button type="button" class="we_seg_btn" data-engine="default" title="Curated event pools, scene modes and story threads">Default</button>
+                        <button type="button" class="we_seg_btn" data-engine="lite" title="Only the tier and impact are injected — the model invents the event">Lite</button>
                     </div>
                     <div id="we_engine_hint" class="we_hint"></div>
 
