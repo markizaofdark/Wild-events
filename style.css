@@ -105,11 +105,93 @@
     padding: 8px 10px 10px 10px;
 }
 
-/* ── Mode toggle ───────────────────────────────────────── */
+/* ── Custom settings cards ──────────────────────────────── */
 
-.we_mode_btns .menu_button.we_mode_active {
-    background: color-mix(in srgb, var(--SmartThemeBodyColor) 20%, transparent);
-    box-shadow: inset 0 0 0 1px var(--SmartThemeBorderColor, rgba(128,128,128,0.4));
+.we_cs_empty {
+    font-size: 0.85em;
+    opacity: 0.45;
+    text-align: center;
+    padding: 8px 0;
+    font-style: italic;
+}
+
+.we_cs_card {
+    border: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor) 15%, transparent);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.we_cs_header {
+    padding: 5px 8px;
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 5%, transparent);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.we_cs_name {
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+.we_cs_desc_preview {
+    font-size: 0.78em;
+    opacity: 0.55;
+    font-style: italic;
+}
+
+.we_cs_actions {
+    display: flex;
+    gap: 4px;
+    padding: 5px 8px;
+    background: color-mix(in srgb, var(--SmartThemeBodyColor) 3%, transparent);
+}
+
+.we_cs_actions .menu_button {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    min-width: unset;
+    height: unset;
+    line-height: 1.5;
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.we_cs_btn_use.we_cs_active {
+    color: #66bb6a !important;
+    border-color: color-mix(in srgb, #66bb6a 40%, transparent) !important;
+}
+
+/* ── Danger button ──────────────────────────────────────── */
+
+.we_btn_danger {
+    color: #ef5350 !important;
+    border-color: color-mix(in srgb, #ef5350 30%, transparent) !important;
+    flex: 0 0 auto !important;
+}
+
+.we_btn_danger:hover {
+    background: color-mix(in srgb, #ef5350 15%, transparent) !important;
+}
+
+/* ── Status line ────────────────────────────────────────── */
+
+#we_cs_status {
+    min-height: 1.2em;
+    transition: opacity 0.2s;
+}
+
+/* ── Textarea in custom settings ────────────────────────── */
+
+#we_cs_desc {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+    font-size: 0.85em;
+    margin-bottom: 2px;
 }
 
 /* ── Floating widget ────────────────────────────────────── */
@@ -140,15 +222,6 @@
 
 #we_fab:hover {
     opacity: 0.8;
-}
-
-#we_widget.we_dragging {
-    opacity: 0.7;
-    z-index: 99999;
-}
-
-#we_widget.we_dragging #we_fab {
-    cursor: grabbing;
 }
 
 #we_fab_dot {
@@ -213,6 +286,64 @@
     margin-bottom: 6px;
 }
 
+#we_pop_setting {
+    font-size: 10px;
+    color: var(--SmartThemeBodyColor, #ccc);
+    opacity: 0.4;
+    margin-bottom: 6px;
+    font-style: italic;
+}
+
+/* ── Scene mode row in widget popup ─────────────────────── */
+
+#we_pop_scene {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 4px 0 6px 0;
+    padding-top: 7px;
+    border-top: 1px solid var(--SmartThemeBorderColor, rgba(128,128,128,0.2));
+}
+
+#we_pop_scene_label {
+    font-size: 10px;
+    color: var(--SmartThemeBodyColor, #ccc);
+    opacity: 0.4;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+#we_pop_scene_val {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--SmartThemeBodyColor, #ccc);
+    opacity: 0.85;
+    margin-left: auto;
+    text-align: right;
+}
+
+/* Status marks next to the mode name (manual / locked) */
+.we_mode_mark {
+    font-size: 0.78em;
+    opacity: 0.55;
+    margin-left: 2px;
+    vertical-align: baseline;
+}
+
+.we_thread_icon {
+    font-size: 0.9em;
+    opacity: 0.6;
+    margin-right: 3px;
+}
+
+#we_pop_threads {
+    font-size: 10px;
+    color: var(--SmartThemeBodyColor, #ccc);
+    opacity: 0.55;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
 #we_pop_tension {
     display: flex;
     align-items: center;
@@ -247,67 +378,6 @@
     color: var(--SmartThemeBodyColor, #ccc);
     opacity: 0.4;
     white-space: nowrap;
-}
-
-/* ── Arc flag delta / active arcs / debug ─────────────── */
-
-#we_pop_flag_delta {
-    font-size: 10px;
-    margin-top: 4px;
-    margin-bottom: 3px;
-    letter-spacing: 0.02em;
-}
-
-#we_pop_arcs {
-    font-size: 10px;
-    color: var(--SmartThemeBodyColor, #ccc);
-    opacity: 0.7;
-    margin-bottom: 6px;
-    line-height: 1.35;
-}
-
-.we_arc_label {
-    opacity: 0.55;
-    margin-right: 3px;
-}
-
-.we_arc_opened {
-    color: #66bb6a;
-    font-weight: 600;
-}
-
-.we_arc_closed {
-    color: #ef5350;
-    font-weight: 600;
-}
-
-#we_pop_debug {
-    margin-top: 8px;
-    padding-top: 6px;
-    border-top: 1px solid color-mix(in srgb, var(--SmartThemeBodyColor) 15%, transparent);
-}
-
-#we_pop_debug_label {
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    opacity: 0.45;
-    margin-bottom: 4px;
-}
-
-.we_dbg_row {
-    font-size: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1px 0;
-}
-
-.we_dbg_scale {
-    font-size: 9px;
-    opacity: 0.4;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
 }
 
 /* ── Blueberry icon — theme-adaptive ───────────────────── */
