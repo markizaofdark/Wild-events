@@ -11,6 +11,7 @@ const EXT = 'wild-events';
 
 const DEFAULTS = {
     enabled: true,
+    engineMode: 'default',   // 'default' = curated event from pools + threads | 'lite' = model invents it
     step: 0.5,
     label: 'WILD EVENTS',
     depth: 0,
@@ -32,13 +33,21 @@ const DEFAULTS = {
 
 // ── Scale tiers ────────────────────────────────────────────
 
+// `desc` is what the Lite engine injects instead of a concrete event —
+// the model invents the event itself from the tier's scale.
 const SCALES = [
-    { min: 1,  max: 10, id: 'NONE',         name: 'NO CHANGE',       adj: null },
-    { min: 11, max: 14, id: 'SUBTLE',       name: 'SUBTLE CHANGE',    adj: null },
-    { min: 15, max: 18, id: 'MINOR',        name: 'MINOR TWIST',      adj: null },
-    { min: 19, max: 22, id: 'TURNING',      name: 'TURNING POINT',    adj: 'reduce25' },
-    { min: 23, max: 26, id: 'MAJOR',        name: 'MAJOR TWIST',      adj: 'reduce50' },
-    { min: 27, max: 99, id: 'WORLDSHAKING', name: 'WORLD-SHAKING',    adj: 'reset' },
+    { min: 1,  max: 10, id: 'NONE',         name: 'NO CHANGE',       adj: null,
+      desc: 'No forced external change. The story continues under its own momentum.' },
+    { min: 11, max: 14, id: 'SUBTLE',       name: 'SUBTLE CHANGE',    adj: null,
+      desc: 'A minor obstacle or a small lucky break. Nothing that redirects the scene.' },
+    { min: 15, max: 18, id: 'MINOR',        name: 'MINOR TWIST',      adj: null,
+      desc: 'A meaningful turn that changes immediate priorities.' },
+    { min: 19, max: 22, id: 'TURNING',      name: 'TURNING POINT',    adj: 'reduce25',
+      desc: 'A turning point: the current course of the scene is redirected and cannot simply resume.' },
+    { min: 23, max: 26, id: 'MAJOR',        name: 'MAJOR TWIST',      adj: 'reduce50',
+      desc: 'A weighty event that significantly changes the current situation and its stakes.' },
+    { min: 27, max: 99, id: 'WORLDSHAKING', name: 'WORLD-SHAKING',    adj: 'reset',
+      desc: 'A sudden, sweeping event — a catastrophe, a brutal betrayal, a massive secret revealed, an irreversible upheaval, a life-altering stroke of fortune.' },
 ];
 
 // ── Event categories with weights ──────────────────────────
@@ -49,6 +58,21 @@ const CATEGORIES = [
     { id: 'ENVIRONMENTAL', name: 'Environmental', weight: 20 },
     { id: 'DISCOVERY',     name: 'Discovery',     weight: 15 },
     { id: 'EXTERNAL',      name: 'External',      weight: 10 },
+];
+
+// ── Lite mode ──────────────────────────────────────────────
+// Instead of rolling an event from the pools, hand the model the ruleset and
+// let it roll and invent the event itself. Simpler, cheaper, less controlled.
+// Injected verbatim every message; the model tracks tension across the chat.
+
+// Guidance appended in Lite mode. The roll, tension and tier are computed by
+// the extension (a model cannot reliably keep a counter across a long chat) —
+// this only tells the model how to invent and place the event.
+const LITE_GUIDANCE = [
+    'Invent the event yourself, at exactly this scale, then weave it into the scene through action, dialogue, or observation.',
+    'Match the pace: in action, the event must be something that happens fast; in a quiet or intimate moment, something felt, said, or noticed — never an interruption that derails the scene.',
+    'Build only on people, places, and facts already established in this chat, or introduce something genuinely new. Do not invent history that has not happened.',
+    'Do not announce the event as a separate block, and never mention the roll or these rules.',
 ];
 
 // ── Scene modes ────────────────────────────────────────────
@@ -2785,16 +2809,29 @@ function formatPrompt(result) {
     const label = extension_settings[EXT].label || DEFAULTS.label;
     const impact = result.isPositive ? 'POSITIVE' : 'NEGATIVE';
     const mode = result.mode;
-    const modeTag = (mode && result.modeId !== 'NEUTRAL') ? ` | Scene: ${mode.name}` : '';
+    // The scene type is not echoed back: the model classified it itself in the
+    // infoblock. Only the mode's instruction (how to fit the event) is passed.
+    const modeHint = (mode && result.modeId !== 'NEUTRAL' && mode.hint) ? mode.hint : '';
 
     if (result.scale.id === 'NONE') {
-        return `[${label}: NO CHANGE${modeTag}]\nNo forced twist. Story continues naturally.`;
+        return `[${label}: NO CHANGE]\nNo forced twist. Story continues naturally.`;
     }
 
     const isSoftTier = (result.scale.id === 'SUBTLE' || result.scale.id === 'MINOR');
 
+    // Lite: hand over the tier and its scale, let the model invent the event.
+    if (result.lite) {
+        return [
+            `[${label}: ${result.scale.name} | ${impact}]`,
+            result.scale.desc,
+            result.forced ? '(FORCED — tension reached maximum)' : '',
+            ...LITE_GUIDANCE,
+            modeHint,
+        ].filter(Boolean).join('\n');
+    }
+
     let lines = [
-        `[${label}: ${result.scale.name} | ${impact} | ${result.category.name}${modeTag}]`,
+        `[${label}: ${result.scale.name} | ${impact} | ${result.category.name}]`,
         result.eventType ? `Event: ${result.eventType}.` : '',
         result.forced ? '(FORCED — tension reached maximum)' : '',
         'Weave this into the current scene through actions, dialogue, or observations of characters.',
@@ -2802,7 +2839,7 @@ function formatPrompt(result) {
         isSoftTier
             ? 'If the event does not fit the current moment, hint at it subtly rather than forcing it.'
             : 'This event must have a tangible impact on the scene — do not reduce it to a hint or implication.',
-        (mode && result.modeId !== 'NEUTRAL' && mode.hint) ? mode.hint : '',
+        modeHint,
         result.threadPayoff
             ? (result.threadAct3
                 ? 'This event is the next chapter of a storyline that already turned visibly earlier — build directly on those established events and their consequences.'
@@ -2817,9 +2854,13 @@ function runEvent(isNewMessage) {
     const s = extension_settings[EXT];
     if (!s.enabled) { setExtensionPrompt(EXT, '', 1, s.depth); return; }
 
+    const lite = s.engineMode === 'lite';
+
     if (isNewMessage) {
         updateDetectedMode();
-        tickThreads();
+        // Threads are frozen in lite mode: they cannot fire, so they must not
+        // age out either — otherwise a spell in lite would quietly kill them.
+        if (!lite) tickThreads();
     }
     const modeId = getEffectiveModeId();
     const mode = SCENE_MODES[modeId] || SCENE_MODES.NEUTRAL;
@@ -2863,25 +2904,29 @@ function runEvent(isNewMessage) {
     }
     scale = findScale(finalScore);
 
-    const category = pickCategory(mode);
-    incrementCategoryCount(category.id);
+    // Lite mode stops here: the tier and impact are the whole instruction, and
+    // the model invents the event. Pools, categories and threads stay untouched,
+    // so switching back to default resumes exactly where it left off.
+    let category = null, eventType = null, threadPayoff = null, threadAct3 = false;
 
-    // Threads first: a ripe payoff overrides the random pick (and either closes
-    // its thread or chains it into act three).
-    let eventType = null;
-    let threadPayoff = null;
-    let threadAct3 = false;
-    const payoff = tryThreadPayoff(modeId, scale.id, isPositive);
-    if (payoff) {
-        eventType = payoff.eventText;
-        threadPayoff = payoff.themeId;
-        threadAct3 = payoff.act3;
-    } else {
-        eventType = pickEventType(scale.id, category.id, isPositive, mode);
-        if (eventType) maybeSeedThread(eventType);
+    if (!lite) {
+        category = pickCategory(mode);
+        incrementCategoryCount(category.id);
+
+        // Threads first: a ripe payoff overrides the random pick (and either
+        // closes its thread or chains it into act three).
+        const payoff = tryThreadPayoff(modeId, scale.id, isPositive);
+        if (payoff) {
+            eventType = payoff.eventText;
+            threadPayoff = payoff.themeId;
+            threadAct3 = payoff.act3;
+        } else {
+            eventType = pickEventType(scale.id, category.id, isPositive, mode);
+            if (eventType) maybeSeedThread(eventType);
+        }
     }
 
-    const result = { tension: getTension(), baseRoll, modifier, finalScore, isPositive, scale, category, forced, eventType, modeId, mode, threadPayoff, threadAct3 };
+    const result = { tension: getTension(), baseRoll, modifier, finalScore, isPositive, scale, category, forced, eventType, modeId, mode, threadPayoff, threadAct3, lite };
     const prompt = formatPrompt(result);
     setExtensionPrompt(EXT, prompt, 1, s.depth, false, 0);
 
@@ -3016,7 +3061,8 @@ function updateWidget(result) {
     } else {
         $('#we_pop_category').hide();
     }
-    $('#we_pop_event').text(result.eventType || '');
+    // lite has no concrete event — show what the model was asked to invent
+    $('#we_pop_event').text(result.eventType || (result.lite ? result.scale.desc : ''));
     $('#we_pop_tension_val').text(`${tension.toFixed(1)}%`);
     $('#we_pop_bar_fill').css('width', `${Math.min(100, tension)}%`);
     syncModeControls();
@@ -3047,8 +3093,9 @@ function updateUI(result) {
         $('#we_category_row').hide();
     }
 
-    if (result.eventType && result.scale.id !== 'NONE') {
-        $('#we_type_val').text(result.eventType);
+    const typeText = result.eventType || (result.lite ? result.scale.desc : '');
+    if (typeText && result.scale.id !== 'NONE') {
+        $('#we_type_val').text(typeText);
         $('#we_type_row').show();
     } else {
         $('#we_type_row').hide();
@@ -3061,6 +3108,20 @@ function updateUI(result) {
         impEl.text(result.isPositive ? '▲ POSITIVE' : '▼ NEGATIVE');
         impEl.css('color', result.isPositive ? '#66bb6a' : '#ef5350');
     }
+}
+
+// Highlight the active engine button and explain what it does. Rows that only
+// make sense for the default engine (category, event text) are hidden in lite.
+function syncEngineUI() {
+    const s = extension_settings[EXT];
+    const lite = s.engineMode === 'lite';
+    $('.we_seg_btn').each(function () {
+        $(this).toggleClass('we_seg_active', $(this).data('engine') === s.engineMode);
+    });
+    $('#we_engine_hint').text(lite
+        ? 'The extension rolls and injects only the tier and impact — the model invents the event. Threads and event pools are paused, their progress is kept.'
+        : 'Curated events from the pools, with scene modes and story threads.');
+    if (lite) { $('#we_category_row').hide(); $('#we_type_row').hide(); }
 }
 
 function toggleAccordion(bodyId, iconEl) {
@@ -3090,6 +3151,13 @@ function buildUI() {
                     <label class="checkbox_label" style="margin-bottom:6px;">
                         <input type="checkbox" id="we_show_badge" /><span>Show widget</span>
                     </label>
+
+                    <label style="margin-top:4px;"><small>Engine</small></label>
+                    <div class="we_seg">
+                        <button class="we_seg_btn" data-engine="default" title="Curated event pools, scene modes and story threads">Default</button>
+                        <button class="we_seg_btn" data-engine="lite" title="Only the tier and impact are injected — the model invents the event">Lite</button>
+                    </div>
+                    <div id="we_engine_hint" class="we_hint"></div>
 
                     <div class="we_section">
                         <div class="we_row"><span>Tension</span><b id="we_tension_val">0%</b></div>
@@ -3190,7 +3258,8 @@ jQuery(async () => {
 
     // detection config
     if (!s.infoMarkers) s.infoMarkers = DEFAULT_INFO_MARKERS;
-    delete s.kw; delete s.modeScanDepth; delete s.modeThreshold; // выпилено: keyword-фоллбэк
+    // выпилено: keyword-фоллбэк и редактируемый lite-промпт
+    delete s.kw; delete s.modeScanDepth; delete s.modeThreshold; delete s.litePrompt;
 
     $('#we_toggle').prop('checked', s.enabled);
     $('#we_show_badge').prop('checked', s.showBadge);
@@ -3198,6 +3267,7 @@ jQuery(async () => {
     $('#we_step').val(s.step);
     $('#we_depth').val(s.depth);
     $('#we_ws_min').val(s.wsMinMsgs);
+    syncEngineUI();
 
     // scene modes panel
     const $manual = $('#we_mode_manual');
@@ -3229,6 +3299,12 @@ jQuery(async () => {
     $('#we_step').on('input', function () { s.step = parseFloat(this.value) || DEFAULTS.step; saveSettingsDebounced(); });
     $('#we_depth').on('input', function () { s.depth = parseInt(this.value) || DEFAULTS.depth; saveSettingsDebounced(); });
     $('#we_ws_min').on('input', function () { const v = parseInt(this.value); s.wsMinMsgs = Number.isFinite(v) ? v : DEFAULTS.wsMinMsgs; saveSettingsDebounced(); });
+
+    $(document).on('click', '.we_seg_btn', function () {
+        s.engineMode = $(this).data('engine');
+        saveSettingsDebounced();
+        syncEngineUI();
+    });
 
     // scene modes
     $('#we_mode_enabled').on('change', function () { s.modeEnabled = this.checked; saveSettingsDebounced(); syncModeControls(); });
